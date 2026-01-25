@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, LogOut, LayoutDashboard } from 'lucide-react';
-import { menuItems, MenuItem, getCategoryLabel, getTimeSlotLabel } from '@/data/menuData';
+import { useMenuItems, MenuItem } from '@/hooks/useMenuItems';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTableNumber } from '@/hooks/useTableNumber';
+import { useOrders } from '@/hooks/useOrders';
+import { useCart } from '@/contexts/CartContext';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { FloatingCart } from '@/components/FloatingCart';
 import { OrderStatusBanner } from '@/components/OrderStatusBanner';
@@ -13,28 +15,33 @@ import { MenuItemCard } from '@/components/MenuItemCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type TimeSlot = 'all' | 'morning' | 'afternoon' | 'evening' | 'night';
 type Category = 'all' | 'south-indian' | 'north-indian' | 'chinese' | 'tandoor';
+
+const getCategoryLabel = (category: string, language: 'en' | 'kn'): string => {
+  const labels: Record<string, { en: string; kn: string }> = {
+    'south-indian': { en: 'South Indian', kn: 'ದಕ್ಷಿಣ ಭಾರತೀಯ' },
+    'north-indian': { en: 'North Indian', kn: 'ಉತ್ತರ ಭಾರತೀಯ' },
+    'chinese': { en: 'Chinese', kn: 'ಚೈನೀಸ್' },
+    'tandoor': { en: 'Tandoor', kn: 'ತಂದೂರ್' },
+  };
+  return labels[category]?.[language] || category;
+};
 
 export default function MenuPage() {
   const { t, language } = useLanguage();
   const { signOut, isManager } = useAuth();
   const { isTableSet, saveTableNumber } = useTableNumber();
+  const { menuItems, isLoading: isMenuLoading } = useMenuItems();
+  const { currentOrder } = useOrders();
+  const { items: cartItems } = useCart();
   const navigate = useNavigate();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot>('all');
   const [selectedCategory, setSelectedCategory] = useState<Category>('all');
-
-  // Determine current time slot
-  const getCurrentTimeSlot = (): TimeSlot => {
-    const hour = new Date().getHours();
-    if (hour >= 6 && hour < 11) return 'morning';
-    if (hour >= 11 && hour < 16) return 'afternoon';
-    if (hour >= 16 && hour < 20) return 'evening';
-    return 'night';
-  };
 
   // Filter menu items
   const filteredItems = useMemo(() => {
@@ -57,7 +64,7 @@ export default function MenuPage() {
 
       return searchMatch && timeSlotMatch && categoryMatch;
     });
-  }, [searchQuery, selectedTimeSlot, selectedCategory]);
+  }, [menuItems, searchQuery, selectedTimeSlot, selectedCategory]);
 
   // Group items by category for display
   const groupedItems = useMemo(() => {
@@ -75,6 +82,11 @@ export default function MenuPage() {
     await signOut();
     navigate('/');
   };
+
+  // Check if customer has an active order
+  const hasActiveOrder = currentOrder && 
+    (currentOrder.order_status === 'Pending' || currentOrder.order_status === 'Confirmed') &&
+    !(currentOrder as any).payment_confirmed;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -148,15 +160,21 @@ export default function MenuPage() {
 
       {/* Menu items */}
       <main className="flex-1 container py-6 pb-24">
-        {Object.keys(groupedItems).length === 0 ? (
+        {isMenuLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-20 w-full" />
+            ))}
+          </div>
+        ) : Object.keys(groupedItems).length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            No items found
+            {language === 'kn' ? 'ಯಾವುದೇ ಐಟಂಗಳು ಕಂಡುಬಂದಿಲ್ಲ' : 'No items found'}
           </div>
         ) : (
           Object.entries(groupedItems).map(([category, items]) => (
             <section key={category} className="mb-8">
               <h2 className="text-xl font-semibold mb-4 text-foreground">
-                {getCategoryLabel(category as MenuItem['category'], language)}
+                {getCategoryLabel(category, language)}
               </h2>
               <div className="grid gap-3">
                 {items.map((item) => (
@@ -169,7 +187,7 @@ export default function MenuPage() {
       </main>
 
       {/* Floating cart button */}
-      <FloatingCart />
+      <FloatingCart hasActiveOrder={hasActiveOrder} />
 
       {/* Table number modal */}
       <TableNumberModal open={!isTableSet} onSave={saveTableNumber} />
