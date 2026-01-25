@@ -11,6 +11,7 @@ import MenuPage from "./pages/MenuPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrderStatusPage from "./pages/OrderStatusPage";
+import OrderHistoryPage from "./pages/OrderHistoryPage";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -59,6 +60,7 @@ const AppRoutes = () => (
     <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
     <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
     <Route path="/order-status" element={<ProtectedRoute><OrderStatusPage /></ProtectedRoute>} />
+    <Route path="/order-history" element={<ProtectedRoute><OrderHistoryPage /></ProtectedRoute>} />
     <Route path="/manager" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>

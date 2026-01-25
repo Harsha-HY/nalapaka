@@ -1,22 +1,61 @@
 import { Plus, Minus } from 'lucide-react';
-import { MenuItem } from '@/data/menuData';
 import { useCart } from '@/contexts/CartContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+
+interface MenuItem {
+  id: string;
+  name: string;
+  nameKn: string;
+  price: number;
+  category: string;
+  timeSlot: string;
+  isAvailable?: boolean;
+}
 
 interface MenuItemCardProps {
   item: MenuItem;
 }
 
 export function MenuItemCard({ item }: MenuItemCardProps) {
-  const { items, addItem, updateQuantity, removeItem } = useCart();
+  const { items, addItem, updateQuantity } = useCart();
   const { language, t } = useLanguage();
 
   const cartItem = items.find((i) => i.id === item.id);
   const quantity = cartItem?.quantity || 0;
+  const isAvailable = item.isAvailable !== false;
 
   const displayName = language === 'kn' ? item.nameKn : item.name;
+
+  // Convert item to MenuItem format expected by cart
+  const cartMenuItem = {
+    id: item.id,
+    name: item.name,
+    nameKn: item.nameKn,
+    price: item.price,
+    category: item.category as 'south-indian' | 'north-indian' | 'chinese' | 'tandoor',
+    timeSlot: item.timeSlot as 'morning' | 'afternoon' | 'evening' | 'night' | 'all',
+  };
+
+  if (!isAvailable) {
+    return (
+      <Card className="overflow-hidden opacity-60">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-muted-foreground line-through truncate">{displayName}</h3>
+              <p className="text-lg font-bold text-muted-foreground">₹{item.price}</p>
+            </div>
+            <Badge variant="secondary" className="text-muted-foreground">
+              {language === 'kn' ? 'ಲಭ್ಯವಿಲ್ಲ' : 'Not Available'}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="overflow-hidden transition-shadow hover:shadow-md">
@@ -30,7 +69,7 @@ export function MenuItemCard({ item }: MenuItemCardProps) {
           <div className="flex items-center gap-2">
             {quantity === 0 ? (
               <Button
-                onClick={() => addItem(item)}
+                onClick={() => addItem(cartMenuItem)}
                 size="sm"
                 className="min-w-[70px]"
               >
@@ -51,7 +90,7 @@ export function MenuItemCard({ item }: MenuItemCardProps) {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => addItem(item)}
+                  onClick={() => addItem(cartMenuItem)}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>

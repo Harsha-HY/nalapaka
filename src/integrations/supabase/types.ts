@@ -14,13 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      menu_items: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          is_available: boolean
+          name: string
+          name_kn: string
+          price: number
+          time_slot: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id: string
+          is_available?: boolean
+          name: string
+          name_kn: string
+          price: number
+          time_slot: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          name?: string
+          name_kn?: string
+          price?: number
+          time_slot?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string
           customer_name: string
+          eating_finished: boolean
           id: string
           order_status: Database["public"]["Enums"]["order_status"]
           ordered_items: Json
+          payment_confirmed: boolean
           payment_mode: Database["public"]["Enums"]["payment_mode"]
           phone_number: string
           table_number: string
@@ -31,9 +69,11 @@ export type Database = {
         Insert: {
           created_at?: string
           customer_name: string
+          eating_finished?: boolean
           id?: string
           order_status?: Database["public"]["Enums"]["order_status"]
           ordered_items?: Json
+          payment_confirmed?: boolean
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
           phone_number: string
           table_number: string
@@ -44,9 +84,11 @@ export type Database = {
         Update: {
           created_at?: string
           customer_name?: string
+          eating_finished?: boolean
           id?: string
           order_status?: Database["public"]["Enums"]["order_status"]
           ordered_items?: Json
+          payment_confirmed?: boolean
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
           phone_number?: string
           table_number?: string
@@ -93,7 +135,7 @@ export type Database = {
     }
     Enums: {
       app_role: "manager" | "customer"
-      order_status: "Pending" | "Confirmed"
+      order_status: "Pending" | "Confirmed" | "Cancelled"
       payment_mode: "Not Paid" | "Cash" | "Online"
     }
     CompositeTypes: {
@@ -223,7 +265,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["manager", "customer"],
-      order_status: ["Pending", "Confirmed"],
+      order_status: ["Pending", "Confirmed", "Cancelled"],
       payment_mode: ["Not Paid", "Cash", "Online"],
     },
   },
