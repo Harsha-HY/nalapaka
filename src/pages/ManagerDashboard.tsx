@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, 
   RefreshCw, 
   CheckCircle, 
   Clock, 
@@ -14,65 +13,115 @@ import {
   Minus,
   History,
   UtensilsCrossed,
-  DollarSign
+  DollarSign,
+  Banknote,
+  Smartphone,
+  RotateCcw,
+  Package,
+  LogOut
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useOrders } from '@/hooks/useOrders';
+import { useOrders, Order } from '@/hooks/useOrders';
 import { useMenuItems } from '@/hooks/useMenuItems';
+import { useLockedTables } from '@/hooks/useLockedTables';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WaitTimeSelector } from '@/components/WaitTimeSelector';
+import { CountdownTimer } from '@/components/CountdownTimer';
 import { toast } from 'sonner';
 
 export default function ManagerDashboard() {
-  const { t, language } = useLanguage();
-  const { isManager } = useAuth();
-  const { orders, isLoading, confirmOrder, cancelOrder, confirmPayment, deleteOrder, refreshOrders } = useOrders();
+  const { language } = useLanguage();
+  const { isManager, signOut } = useAuth();
+  const { 
+    orders, 
+    isLoading, 
+    confirmOrder, 
+    cancelOrder, 
+    confirmPayment, 
+    deleteOrder, 
+    refreshOrders,
+    getTodayStats 
+  } = useOrders();
   const { menuItems, toggleAvailability } = useMenuItems();
+  const { unlockTable } = useLockedTables();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('orders');
+  
+  const [activeSection, setActiveSection] = useState<'orders' | 'menu' | 'history'>('orders');
+  const [waitTimeOrderId, setWaitTimeOrderId] = useState<string | null>(null);
+
+  // Redirect non-managers
+  useEffect(() => {
+    if (!isManager) {
+      navigate('/menu');
+    }
+  }, [isManager, navigate]);
 
   if (!isManager) {
-    navigate('/menu');
     return null;
   }
 
-  const handleConfirmOrder = async (orderId: string) => {
+  const handleConfirmOrder = (orderId: string) => {
+    setWaitTimeOrderId(orderId);
+  };
+
+  const handleWaitTimeSelect = async (minutes: number) => {
+    if (!waitTimeOrderId) return;
+    
     try {
-      await confirmOrder(orderId);
+      await confirmOrder(waitTimeOrderId, minutes);
       toast.success('Order confirmed!');
     } catch (error) {
       toast.error('Failed to confirm order');
+    } finally {
+      setWaitTimeOrderId(null);
     }
   };
 
-  const handleCancelOrder = async (orderId: string) => {
+  const handleRejectOrder = async (orderId: string) => {
     try {
       await cancelOrder(orderId);
-      toast.success('Order cancelled');
+      toast.success('Order rejected');
     } catch (error) {
-      toast.error('Failed to cancel order');
+      toast.error('Failed to reject order');
     }
   };
 
-  const handleDeleteOrder = async (orderId: string) => {
+  const handleDeleteOrder = async (orderId: string, tableNumber: string) => {
     try {
       await deleteOrder(orderId);
+      // Unlock table if it was a dine-in order
+      if (tableNumber && tableNumber !== 'PARCEL') {
+        await unlockTable(tableNumber);
+      }
       toast.success('Order deleted');
     } catch (error) {
       toast.error('Failed to delete order');
     }
   };
 
-  const handleConfirmPayment = async (orderId: string) => {
+  const handlePaymentConfirm = async (orderId: string, paymentMode: 'Cash' | 'Online', tableNumber: string) => {
     try {
-      await confirmPayment(orderId);
-      toast.success('Payment confirmed!');
+      await confirmPayment(orderId, paymentMode);
+      // Unlock table for dine-in orders
+      if (tableNumber && tableNumber !== 'PARCEL') {
+        await unlockTable(tableNumber);
+      }
+      toast.success(`Payment confirmed (${paymentMode})!`);
     } catch (error) {
       toast.error('Failed to confirm payment');
+    }
+  };
+
+  const handleResetTable = async (tableNumber: string) => {
+    try {
+      await unlockTable(tableNumber);
+      toast.success(`Table ${tableNumber} has been reset`);
+    } catch (error) {
+      toast.error('Failed to reset table');
     }
   };
 
@@ -85,7 +134,12 @@ export default function ManagerDashboard() {
     }
   };
 
-  const handlePrintBill = (order: typeof orders[0]) => {
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  const handlePrintBill = (order: Order) => {
     if (!order.payment_confirmed) {
       toast.error('Payment must be confirmed before printing bill');
       return;
@@ -97,6 +151,8 @@ export default function ManagerDashboard() {
       quantity: number;
       price: number;
     }>;
+
+    const orderType = order.order_type || 'dine-in';
 
     const printContent = `
       <!DOCTYPE html>
@@ -113,6 +169,7 @@ export default function ManagerDashboard() {
           .total { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 10px; }
           .footer { text-align: center; margin-top: 20px; font-size: 10px; }
           .info { font-size: 11px; margin: 3px 0; }
+          .badge { display: inline-block; padding: 2px 8px; background: #eee; border-radius: 4px; font-size: 10px; }
         </style>
       </head>
       <body>
@@ -122,7 +179,8 @@ export default function ManagerDashboard() {
           <p>${new Date().toLocaleString()}</p>
         </div>
         <div class="divider"></div>
-        <div class="info">Table: ${order.table_number}</div>
+        <div class="info"><span class="badge">${orderType === 'parcel' ? 'PARCEL' : 'DINE-IN'}</span></div>
+        ${orderType === 'dine-in' ? `<div class="info">Table: ${order.table_number}</div>` : ''}
         <div class="info">Customer: ${order.customer_name}</div>
         <div class="info">Phone: ${order.phone_number}</div>
         <div class="divider"></div>
@@ -155,104 +213,172 @@ export default function ManagerDashboard() {
     }
   };
 
-  const pendingOrders = orders.filter(o => o.order_status === 'Pending');
-  const confirmedOrders = orders.filter(o => o.order_status === 'Confirmed' && !o.payment_confirmed);
-  const paidOrders = orders.filter(o => o.payment_confirmed);
-  const cancelledOrders = orders.filter(o => o.order_status === 'Cancelled');
+  // Filter orders
+  const pendingOrders = orders.filter(o => 
+    o.order_status === 'Pending' || 
+    (o.order_status === 'Confirmed' && !o.payment_confirmed)
+  );
+  const completedOrders = orders.filter(o => o.payment_confirmed);
+  const { totalOrders, totalRevenue } = getTodayStats();
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-background border-b">
-        <div className="container py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/menu')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-xl font-bold">{t('managerDashboard')}</h1>
-          </div>
-          <Button variant="outline" size="sm" onClick={refreshOrders} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+    <div className="min-h-screen flex bg-background">
+      {/* Left Sidebar - History */}
+      <aside className="w-80 border-r bg-muted/30 hidden lg:flex flex-col">
+        <div className="p-4 border-b">
+          <h2 className="font-bold text-lg flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Order History
+          </h2>
         </div>
-      </header>
+        <div className="flex-1 overflow-auto p-4 space-y-3">
+          {completedOrders.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No completed orders yet</p>
+          ) : (
+            completedOrders.slice(0, 20).map((order) => (
+              <Card key={order.id} className="bg-green-50 dark:bg-green-900/20">
+                <CardContent className="p-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-sm">{order.customer_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {order.order_type === 'parcel' ? 'PARCEL' : `Table ${order.table_number}`}
+                      </p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      ₹{order.total_amount}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(order.created_at).toLocaleTimeString()}
+                  </p>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      </aside>
 
-      <main className="flex-1 container py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full mb-6">
-            <TabsTrigger value="orders" className="flex-1">
-              <UtensilsCrossed className="h-4 w-4 mr-2" />
-              Orders
-            </TabsTrigger>
-            <TabsTrigger value="menu" className="flex-1">
-              <UtensilsCrossed className="h-4 w-4 mr-2" />
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="sticky top-0 z-40 bg-background border-b">
+          <div className="p-4 flex items-center justify-between">
+            <h1 className="text-xl font-bold">Manager Dashboard</h1>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={refreshOrders} disabled={isLoading}>
+                <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-1" />
+                Logout
+              </Button>
+            </div>
+          </div>
+          
+          {/* Summary Stats */}
+          <div className="px-4 pb-4 flex gap-4">
+            <Card className="flex-1">
+              <CardContent className="p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Today's Orders</p>
+                  <p className="text-2xl font-bold">{totalOrders}</p>
+                </div>
+                <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
+              </CardContent>
+            </Card>
+            <Card className="flex-1">
+              <CardContent className="p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Today's Revenue</p>
+                  <p className="text-2xl font-bold">₹{totalRevenue}</p>
+                </div>
+                <DollarSign className="h-8 w-8 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div className="px-4 pb-2 flex gap-2">
+            <Button 
+              variant={activeSection === 'orders' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('orders')}
+            >
+              <UtensilsCrossed className="h-4 w-4 mr-1" />
+              Orders ({pendingOrders.length})
+            </Button>
+            <Button 
+              variant={activeSection === 'menu' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('menu')}
+            >
               Menu Control
-            </TabsTrigger>
-            <TabsTrigger value="history" className="flex-1">
-              <History className="h-4 w-4 mr-2" />
+            </Button>
+            <Button 
+              variant={activeSection === 'history' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('history')}
+              className="lg:hidden"
+            >
+              <History className="h-4 w-4 mr-1" />
               History
-            </TabsTrigger>
-          </TabsList>
+            </Button>
+          </div>
+        </header>
 
-          {/* Orders Tab */}
-          <TabsContent value="orders" className="space-y-8">
-            {orders.filter(o => o.order_status !== 'Cancelled' && !o.payment_confirmed).length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-xl text-muted-foreground">{t('noOrders')}</p>
-              </div>
-            ) : (
-              <>
-                {/* Pending Orders */}
-                {pendingOrders.length > 0 && (
-                  <section>
-                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-yellow-600" />
-                      Pending Orders ({pendingOrders.length})
-                    </h2>
-                    <div className="space-y-4">
-                      {pendingOrders.map((order) => (
-                        <OrderCard
-                          key={order.id}
-                          order={order}
-                          language={language}
-                          onConfirm={() => handleConfirmOrder(order.id)}
-                          onCancel={() => handleCancelOrder(order.id)}
-                          onDelete={() => handleDeleteOrder(order.id)}
-                          onPrint={() => handlePrintBill(order)}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                )}
+        <main className="flex-1 overflow-auto p-4">
+          {/* Orders Section */}
+          {activeSection === 'orders' && (
+            <div className="space-y-6">
+              {pendingOrders.length === 0 ? (
+                <div className="text-center py-12">
+                  <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-xl text-muted-foreground">No pending orders</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {pendingOrders.map((order) => (
+                    <PendingOrderCard
+                      key={order.id}
+                      order={order}
+                      language={language}
+                      onConfirm={() => handleConfirmOrder(order.id)}
+                      onReject={() => handleRejectOrder(order.id)}
+                      onPaymentCash={() => handlePaymentConfirm(order.id, 'Cash', order.table_number)}
+                      onPaymentUPI={() => handlePaymentConfirm(order.id, 'Online', order.table_number)}
+                      onResetTable={() => handleResetTable(order.table_number)}
+                    />
+                  ))}
+                </div>
+              )}
 
-                {/* Confirmed Orders - Awaiting Payment */}
-                {confirmedOrders.length > 0 && (
-                  <section>
-                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      Confirmed - Awaiting Payment ({confirmedOrders.length})
-                    </h2>
-                    <div className="space-y-4">
-                      {confirmedOrders.map((order) => (
-                        <OrderCard
-                          key={order.id}
-                          order={order}
-                          language={language}
-                          onConfirmPayment={() => handleConfirmPayment(order.id)}
-                          onDelete={() => handleDeleteOrder(order.id)}
-                          onPrint={() => handlePrintBill(order)}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                )}
-              </>
-            )}
-          </TabsContent>
+              {/* Completed Orders Section */}
+              {completedOrders.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    Completed Orders ({completedOrders.length})
+                  </h2>
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {completedOrders.slice(0, 10).map((order) => (
+                      <CompletedOrderCard
+                        key={order.id}
+                        order={order}
+                        language={language}
+                        onPrint={() => handlePrintBill(order)}
+                        onDelete={() => handleDeleteOrder(order.id, order.table_number)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* Menu Control Tab */}
-          <TabsContent value="menu">
+          {/* Menu Control Section */}
+          {activeSection === 'menu' && (
             <div className="space-y-4">
               {['south-indian', 'north-indian', 'chinese', 'tandoor'].map((category) => {
                 const categoryItems = menuItems.filter(item => item.category === category);
@@ -272,25 +398,17 @@ export default function ManagerDashboard() {
                             </p>
                             <p className="text-sm text-muted-foreground">₹{item.price}</p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant={item.isAvailable ? 'destructive' : 'default'}
-                              size="sm"
-                              onClick={() => handleToggleAvailability(item.id, !item.isAvailable)}
-                            >
-                              {item.isAvailable ? (
-                                <>
-                                  <Minus className="h-4 w-4 mr-1" />
-                                  Disable
-                                </>
-                              ) : (
-                                <>
-                                  <Plus className="h-4 w-4 mr-1" />
-                                  Enable
-                                </>
-                              )}
-                            </Button>
-                          </div>
+                          <Button
+                            variant={item.isAvailable ? 'destructive' : 'default'}
+                            size="sm"
+                            onClick={() => handleToggleAvailability(item.id, !item.isAvailable)}
+                          >
+                            {item.isAvailable ? (
+                              <><Minus className="h-4 w-4 mr-1" />Disable</>
+                            ) : (
+                              <><Plus className="h-4 w-4 mr-1" />Enable</>
+                            )}
+                          </Button>
                         </div>
                       ))}
                     </CardContent>
@@ -298,89 +416,59 @@ export default function ManagerDashboard() {
                 );
               })}
             </div>
-          </TabsContent>
+          )}
 
-          {/* History Tab */}
-          <TabsContent value="history" className="space-y-8">
-            {/* Paid Orders */}
-            {paidOrders.length > 0 && (
-              <section>
-                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                  Completed Orders ({paidOrders.length})
-                </h2>
-                <div className="space-y-4">
-                  {paidOrders.map((order) => (
-                    <OrderCard
-                      key={order.id}
-                      order={order}
-                      language={language}
-                      onPrint={() => handlePrintBill(order)}
-                      onDelete={() => handleDeleteOrder(order.id)}
-                      isCompleted
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
+          {/* History Section (Mobile) */}
+          {activeSection === 'history' && (
+            <div className="space-y-4 lg:hidden">
+              {completedOrders.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No completed orders yet</p>
+              ) : (
+                completedOrders.map((order) => (
+                  <CompletedOrderCard
+                    key={order.id}
+                    order={order}
+                    language={language}
+                    onPrint={() => handlePrintBill(order)}
+                    onDelete={() => handleDeleteOrder(order.id, order.table_number)}
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </main>
+      </div>
 
-            {/* Cancelled Orders */}
-            {cancelledOrders.length > 0 && (
-              <section>
-                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <XCircle className="h-5 w-5 text-destructive" />
-                  Cancelled Orders ({cancelledOrders.length})
-                </h2>
-                <div className="space-y-4">
-                  {cancelledOrders.map((order) => (
-                    <OrderCard
-                      key={order.id}
-                      order={order}
-                      language={language}
-                      onDelete={() => handleDeleteOrder(order.id)}
-                      onPrint={() => {}}
-                      isCancelled
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {paidOrders.length === 0 && cancelledOrders.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-xl text-muted-foreground">No order history</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </main>
+      {/* Wait Time Selector Modal */}
+      <WaitTimeSelector
+        open={waitTimeOrderId !== null}
+        onClose={() => setWaitTimeOrderId(null)}
+        onSelect={handleWaitTimeSelect}
+      />
     </div>
   );
 }
 
-interface OrderCardProps {
-  order: any;
+// Pending Order Card Component
+interface PendingOrderCardProps {
+  order: Order;
   language: 'en' | 'kn';
-  onConfirm?: () => void;
-  onCancel?: () => void;
-  onDelete?: () => void;
-  onConfirmPayment?: () => void;
-  onPrint: () => void;
-  isCompleted?: boolean;
-  isCancelled?: boolean;
+  onConfirm: () => void;
+  onReject: () => void;
+  onPaymentCash: () => void;
+  onPaymentUPI: () => void;
+  onResetTable: () => void;
 }
 
-function OrderCard({ 
+function PendingOrderCard({ 
   order, 
   language, 
   onConfirm, 
-  onCancel, 
-  onDelete, 
-  onConfirmPayment, 
-  onPrint,
-  isCompleted,
-  isCancelled 
-}: OrderCardProps) {
+  onReject,
+  onPaymentCash,
+  onPaymentUPI,
+  onResetTable
+}: PendingOrderCardProps) {
   const orderedItems = order.ordered_items as Array<{
     name: string;
     nameKn: string;
@@ -390,61 +478,67 @@ function OrderCard({
 
   const isPending = order.order_status === 'Pending';
   const isConfirmed = order.order_status === 'Confirmed';
-  const showPaymentInfo = order.eating_finished && order.payment_mode !== 'Not Paid';
+  const orderType = order.order_type || 'dine-in';
+  const waitTimeMinutes = order.wait_time_minutes;
+  const confirmedAt = order.confirmed_at;
 
   const handleCall = () => {
     window.location.href = `tel:${order.phone_number}`;
   };
 
   const handleWhatsApp = () => {
-    const message = encodeURIComponent(`Hello ${order.customer_name}, this is Nalapaka Nanjangud regarding your order for Table ${order.table_number}.`);
+    const message = encodeURIComponent(`Hello ${order.customer_name}, this is Nalapaka Nanjangud regarding your order.`);
     window.open(`https://wa.me/91${order.phone_number.replace(/\D/g, '')}?text=${message}`, '_blank');
   };
 
   return (
-    <Card className={`${isCompleted ? 'border-green-200 bg-green-50/50' : isCancelled ? 'border-red-200 bg-red-50/50' : isPending ? 'border-yellow-200' : 'border-green-200'}`}>
+    <Card className={`${isPending ? 'border-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/10' : 'border-blue-400 bg-blue-50/50 dark:bg-blue-900/10'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Table {order.table_number}</CardTitle>
           <div className="flex items-center gap-2">
-            <Badge variant={isCompleted ? 'default' : isCancelled ? 'destructive' : isPending ? 'secondary' : 'default'}>
-              {isCompleted ? 'Paid' : order.order_status}
-            </Badge>
-            {showPaymentInfo && !isCompleted && (
-              <Badge variant="outline">
-                {order.payment_mode === 'Cash' ? 'Cash Payment' : 'Online Payment'}
-              </Badge>
+            {orderType === 'parcel' ? (
+              <Badge variant="secondary"><Package className="h-3 w-3 mr-1" />PARCEL</Badge>
+            ) : (
+              <CardTitle className="text-lg">Table {order.table_number}</CardTitle>
             )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={isPending ? 'secondary' : 'default'}>
+              {isPending ? 'PENDING' : 'CONFIRMED'}
+            </Badge>
+            <Badge variant="outline">PAYMENT PENDING</Badge>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Customer Info */}
         <div className="flex items-start justify-between">
-          <div className="grid grid-cols-2 gap-2 text-sm flex-1">
-            <div>
-              <span className="text-muted-foreground">Customer:</span>
-              <p className="font-medium">{order.customer_name}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div>
-                <span className="text-muted-foreground">Phone:</span>
-                <p className="font-medium">{order.phone_number}</p>
-              </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCall}>
-                  <Phone className="h-4 w-4 text-green-600" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleWhatsApp}>
-                  <MessageCircle className="h-4 w-4 text-green-600" />
-                </Button>
-              </div>
-            </div>
+          <div>
+            <p className="font-medium">{order.customer_name}</p>
+            <p className="text-sm text-muted-foreground">{order.phone_number}</p>
+          </div>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCall}>
+              <Phone className="h-4 w-4 text-green-600" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleWhatsApp}>
+              <MessageCircle className="h-4 w-4 text-green-600" />
+            </Button>
           </div>
         </div>
 
+        {/* Timer */}
+        {isConfirmed && waitTimeMinutes && confirmedAt && (
+          <div className="py-2 px-3 bg-primary/10 rounded-md flex items-center justify-between">
+            <span className="text-sm font-medium">Wait Time:</span>
+            <CountdownTimer confirmedAt={confirmedAt} waitTimeMinutes={waitTimeMinutes} compact />
+          </div>
+        )}
+
         <Separator />
 
-        <div className="space-y-1">
+        {/* Items */}
+        <div className="space-y-1 max-h-32 overflow-auto">
           {orderedItems.map((item, index) => (
             <div key={index} className="flex justify-between text-sm">
               <span>{language === 'kn' ? item.nameKn : item.name} × {item.quantity}</span>
@@ -455,52 +549,122 @@ function OrderCard({
 
         <Separator />
 
-        <div className="flex justify-between font-bold">
+        {/* Total */}
+        <div className="flex justify-between font-bold text-lg">
           <span>Total</span>
           <span className="text-primary">₹{order.total_amount}</span>
         </div>
 
-        {!isCancelled && (
-          <div className="flex flex-wrap gap-2 pt-2">
-            {isPending && onConfirm && (
-              <Button onClick={onConfirm} className="flex-1">
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-2 pt-2">
+          {isPending && (
+            <>
+              <Button onClick={onConfirm} className="w-full">
                 <CheckCircle className="h-4 w-4 mr-1" />
                 Confirm
               </Button>
-            )}
-            {isPending && onCancel && (
-              <Button variant="destructive" onClick={onCancel} className="flex-1">
+              <Button variant="destructive" onClick={onReject} className="w-full">
                 <XCircle className="h-4 w-4 mr-1" />
-                Cancel
+                Reject
               </Button>
-            )}
-            {isConfirmed && !isCompleted && onConfirmPayment && showPaymentInfo && (
-              <Button onClick={onConfirmPayment} className="flex-1 bg-green-600 hover:bg-green-700">
-                <DollarSign className="h-4 w-4 mr-1" />
-                Confirm Payment
+            </>
+          )}
+          {isConfirmed && (
+            <>
+              <Button onClick={onPaymentCash} className="w-full" variant="outline">
+                <Banknote className="h-4 w-4 mr-1" />
+                Cash Paid
               </Button>
-            )}
-            {isCompleted && (
-              <Button variant="outline" onClick={onPrint} className="flex-1">
-                <Printer className="h-4 w-4 mr-1" />
-                Print Bill
+              <Button onClick={onPaymentUPI} className="w-full" variant="outline">
+                <Smartphone className="h-4 w-4 mr-1" />
+                UPI Paid
               </Button>
-            )}
-            {onDelete && (
-              <Button variant="ghost" size="icon" onClick={onDelete}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            )}
-          </div>
-        )}
+            </>
+          )}
+        </div>
 
-        {isCancelled && onDelete && (
-          <div className="flex gap-2 pt-2">
-            <Button variant="ghost" size="icon" onClick={onDelete}>
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
+        {/* Reset Table Button */}
+        {orderType === 'dine-in' && isConfirmed && (
+          <Button variant="ghost" size="sm" className="w-full" onClick={onResetTable}>
+            <RotateCcw className="h-4 w-4 mr-1" />
+            Reset Table
+          </Button>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Completed Order Card Component
+interface CompletedOrderCardProps {
+  order: Order;
+  language: 'en' | 'kn';
+  onPrint: () => void;
+  onDelete: () => void;
+}
+
+function CompletedOrderCard({ order, language, onPrint, onDelete }: CompletedOrderCardProps) {
+  const orderedItems = order.ordered_items as Array<{
+    name: string;
+    nameKn: string;
+    quantity: number;
+    price: number;
+  }>;
+
+  const orderType = order.order_type || 'dine-in';
+
+  return (
+    <Card className="border-green-300 bg-green-50/50 dark:bg-green-900/10">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {orderType === 'parcel' ? (
+              <Badge variant="secondary"><Package className="h-3 w-3 mr-1" />PARCEL</Badge>
+            ) : (
+              <CardTitle className="text-lg">Table {order.table_number}</CardTitle>
+            )}
+          </div>
+          <Badge className="bg-green-600">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            PAID ({order.payment_mode})
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div>
+          <p className="font-medium">{order.customer_name}</p>
+          <p className="text-xs text-muted-foreground">
+            {new Date(order.created_at).toLocaleString()}
+          </p>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-1 max-h-24 overflow-auto text-sm">
+          {orderedItems.map((item, index) => (
+            <div key={index} className="flex justify-between">
+              <span>{language === 'kn' ? item.nameKn : item.name} × {item.quantity}</span>
+              <span>₹{item.price * item.quantity}</span>
+            </div>
+          ))}
+        </div>
+
+        <Separator />
+
+        <div className="flex justify-between font-bold">
+          <span>Total</span>
+          <span className="text-green-600">₹{order.total_amount}</span>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Button variant="outline" size="sm" className="flex-1" onClick={onPrint}>
+            <Printer className="h-4 w-4 mr-1" />
+            Print Bill
+          </Button>
+          <Button variant="destructive" size="sm" onClick={onDelete}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

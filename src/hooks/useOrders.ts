@@ -3,10 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
 
-type Order = Database['public']['Tables']['orders']['Row'] & {
-  eating_finished?: boolean;
-  payment_confirmed?: boolean;
+type OrderRow = Database['public']['Tables']['orders']['Row'];
+
+export type Order = OrderRow & {
+  order_type?: 'dine-in' | 'parcel';
+  wait_time_minutes?: number | null;
+  confirmed_at?: string | null;
 };
+
 type OrderInsert = Database['public']['Tables']['orders']['Insert'];
 
 export function useOrders() {
@@ -91,7 +95,7 @@ export function useOrders() {
     };
   }, [user, currentOrder?.id]);
 
-  const createOrder = async (orderData: Omit<OrderInsert, 'user_id'>) => {
+  const createOrder = async (orderData: Omit<OrderInsert, 'user_id'> & { order_type?: 'dine-in' | 'parcel' }) => {
     if (!user) throw new Error('User not authenticated');
 
     const { data, error } = await supabase
@@ -99,7 +103,8 @@ export function useOrders() {
       .insert({
         ...orderData,
         user_id: user.id,
-      })
+        order_type: orderData.order_type || 'dine-in',
+      } as any)
       .select()
       .single();
 
@@ -146,10 +151,19 @@ export function useOrders() {
     if (error) throw error;
   };
 
-  const confirmOrder = async (orderId: string) => {
+  const confirmOrder = async (orderId: string, waitTimeMinutes?: number) => {
+    const updateData: any = { 
+      order_status: 'Confirmed',
+      confirmed_at: new Date().toISOString(),
+    };
+    
+    if (waitTimeMinutes !== undefined && waitTimeMinutes > 0) {
+      updateData.wait_time_minutes = waitTimeMinutes;
+    }
+
     const { error } = await supabase
       .from('orders')
-      .update({ order_status: 'Confirmed' })
+      .update(updateData)
       .eq('id', orderId);
 
     if (error) throw error;
@@ -192,13 +206,33 @@ export function useOrders() {
     if (error) throw error;
   };
 
-  const confirmPayment = async (orderId: string) => {
+  const confirmPayment = async (orderId: string, paymentMode: 'Cash' | 'Online') => {
     const { error } = await supabase
       .from('orders')
-      .update({ payment_confirmed: true })
+      .update({ 
+        payment_confirmed: true,
+        payment_mode: paymentMode,
+      })
       .eq('id', orderId);
 
     if (error) throw error;
+  };
+
+  // Get today's completed orders for summary
+  const getTodayStats = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const completedToday = orders.filter(o => {
+      const orderDate = new Date(o.created_at);
+      orderDate.setHours(0, 0, 0, 0);
+      return orderDate.getTime() === today.getTime() && o.payment_confirmed;
+    });
+
+    return {
+      totalOrders: completedToday.length,
+      totalRevenue: completedToday.reduce((sum, o) => sum + o.total_amount, 0),
+    };
   };
 
   return {
@@ -213,6 +247,7 @@ export function useOrders() {
     updatePayment,
     markEatingFinished,
     confirmPayment,
+    getTodayStats,
     refreshOrders: fetchOrders,
   };
 }

@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      locked_tables: {
+        Row: {
+          id: string
+          locked_at: string
+          order_id: string
+          table_number: string
+        }
+        Insert: {
+          id?: string
+          locked_at?: string
+          order_id: string
+          table_number: string
+        }
+        Update: {
+          id?: string
+          locked_at?: string
+          order_id?: string
+          table_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "locked_tables_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_items: {
         Row: {
           category: string
@@ -52,11 +81,13 @@ export type Database = {
       }
       orders: {
         Row: {
+          confirmed_at: string | null
           created_at: string
           customer_name: string
           eating_finished: boolean
           id: string
           order_status: Database["public"]["Enums"]["order_status"]
+          order_type: Database["public"]["Enums"]["order_type"] | null
           ordered_items: Json
           payment_confirmed: boolean
           payment_mode: Database["public"]["Enums"]["payment_mode"]
@@ -65,13 +96,16 @@ export type Database = {
           total_amount: number
           updated_at: string
           user_id: string
+          wait_time_minutes: number | null
         }
         Insert: {
+          confirmed_at?: string | null
           created_at?: string
           customer_name: string
           eating_finished?: boolean
           id?: string
           order_status?: Database["public"]["Enums"]["order_status"]
+          order_type?: Database["public"]["Enums"]["order_type"] | null
           ordered_items?: Json
           payment_confirmed?: boolean
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
@@ -80,13 +114,16 @@ export type Database = {
           total_amount?: number
           updated_at?: string
           user_id: string
+          wait_time_minutes?: number | null
         }
         Update: {
+          confirmed_at?: string | null
           created_at?: string
           customer_name?: string
           eating_finished?: boolean
           id?: string
           order_status?: Database["public"]["Enums"]["order_status"]
+          order_type?: Database["public"]["Enums"]["order_type"] | null
           ordered_items?: Json
           payment_confirmed?: boolean
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
@@ -95,6 +132,7 @@ export type Database = {
           total_amount?: number
           updated_at?: string
           user_id?: string
+          wait_time_minutes?: number | null
         }
         Relationships: []
       }
@@ -136,6 +174,7 @@ export type Database = {
     Enums: {
       app_role: "manager" | "customer"
       order_status: "Pending" | "Confirmed" | "Cancelled"
+      order_type: "dine-in" | "parcel"
       payment_mode: "Not Paid" | "Cash" | "Online"
     }
     CompositeTypes: {
@@ -266,6 +305,7 @@ export const Constants = {
     Enums: {
       app_role: ["manager", "customer"],
       order_status: ["Pending", "Confirmed", "Cancelled"],
+      order_type: ["dine-in", "parcel"],
       payment_mode: ["Not Paid", "Cash", "Online"],
     },
   },

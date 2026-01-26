@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, LogOut, LayoutDashboard } from 'lucide-react';
+import { Search, LogOut } from 'lucide-react';
 import { useMenuItems, MenuItem } from '@/hooks/useMenuItems';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -88,6 +88,17 @@ export default function MenuPage() {
     (currentOrder.order_status === 'Pending' || currentOrder.order_status === 'Confirmed') &&
     !(currentOrder as any).payment_confirmed;
 
+  // Manager should go directly to dashboard
+  useEffect(() => {
+    if (isManager) {
+      navigate('/manager');
+    }
+  }, [isManager, navigate]);
+
+  if (isManager) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Order status banner */}
@@ -97,21 +108,11 @@ export default function MenuPage() {
       <header className="sticky top-0 z-40 bg-background border-b">
         <div className="container py-4">
           <div className="flex items-center justify-between mb-4">
-            <div>
+            <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-primary">Nalapaka</h1>
               <p className="text-sm text-muted-foreground">Nanjangud</p>
             </div>
             <div className="flex items-center gap-2">
-              {isManager && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/manager')}
-                >
-                  <LayoutDashboard className="h-4 w-4 mr-1" />
-                  {t('managerDashboard')}
-                </Button>
-              )}
               <LanguageToggle />
               <Button variant="ghost" size="icon" onClick={handleLogout}>
                 <LogOut className="h-5 w-5" />

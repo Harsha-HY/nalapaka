@@ -5,11 +5,13 @@ import { useCart } from '@/contexts/CartContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTableNumber } from '@/hooks/useTableNumber';
 import { useOrders } from '@/hooks/useOrders';
+import { useLockedTables } from '@/hooks/useLockedTables';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { OrderTypeModal } from '@/components/OrderTypeModal';
 import { toast } from 'sonner';
 
 export default function CheckoutPage() {
@@ -17,17 +19,20 @@ export default function CheckoutPage() {
   const { t, language } = useLanguage();
   const { tableNumber } = useTableNumber();
   const { currentOrder, createOrder, addItemsToOrder } = useOrders();
+  const { isTableLocked, lockTable } = useLockedTables();
   const navigate = useNavigate();
 
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showOrderTypeModal, setShowOrderTypeModal] = useState(false);
+  const [pendingOrderData, setPendingOrderData] = useState<any>(null);
 
   // Check if there's an active order to add items to
   const hasActiveOrder = currentOrder && 
     (currentOrder.order_status === 'Pending' || currentOrder.order_status === 'Confirmed') &&
-    !(currentOrder as any).payment_confirmed &&
-    !(currentOrder as any).eating_finished;
+    !currentOrder.payment_confirmed &&
+    !currentOrder.eating_finished;
 
   // Pre-fill customer details from active order
   useEffect(() => {
@@ -45,14 +50,33 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!customerName.trim() || !phoneNumber.trim()) {
+    if (!hasActiveOrder && (!customerName.trim() || !phoneNumber.trim())) {
       toast.error(language === 'kn' ? 'ಎಲ್ಲಾ ಕ್ಷೇತ್ರಗಳನ್ನು ಭರ್ತಿ ಮಾಡಿ' : 'Please fill in all fields');
       return;
     }
 
-    setIsSubmitting(true);
-
-    try {
+    if (hasActiveOrder && currentOrder) {
+      // Add items to existing order
+      setIsSubmitting(true);
+      try {
+        const orderedItems = items.map((item) => ({
+          name: item.name,
+          nameKn: item.nameKn,
+          quantity: item.quantity,
+          price: item.price,
+        }));
+        await addItemsToOrder(currentOrder.id, orderedItems, totalAmount);
+        toast.success(language === 'kn' ? 'ಐಟಂಗಳನ್ನು ಆರ್ಡರ್‌ಗೆ ಸೇರಿಸಲಾಗಿದೆ!' : 'Items added to your order!');
+        clearCart();
+        navigate('/order-status');
+      } catch (error) {
+        console.error('Error adding items:', error);
+        toast.error(language === 'kn' ? 'ಐಟಂಗಳನ್ನು ಸೇರಿಸಲು ವಿಫಲವಾಗಿದೆ' : 'Failed to add items');
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      // New order - show order type selection
       const orderedItems = items.map((item) => ({
         name: item.name,
         nameKn: item.nameKn,
@@ -60,22 +84,49 @@ export default function CheckoutPage() {
         price: item.price,
       }));
 
-      if (hasActiveOrder && currentOrder) {
-        // Add items to existing order
-        await addItemsToOrder(currentOrder.id, orderedItems, totalAmount);
-        toast.success(language === 'kn' ? 'ಐಟಂಗಳನ್ನು ಆರ್ಡರ್‌ಗೆ ಸೇರಿಸಲಾಗಿದೆ!' : 'Items added to your order!');
-      } else {
-        // Create new order
-        await createOrder({
-          customer_name: customerName.trim(),
-          phone_number: phoneNumber.trim(),
-          table_number: tableNumber,
-          ordered_items: orderedItems,
-          total_amount: totalAmount,
-        });
-        toast.success(language === 'kn' ? 'ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!' : 'Order placed successfully!');
+      setPendingOrderData({
+        customer_name: customerName.trim(),
+        phone_number: phoneNumber.trim(),
+        table_number: tableNumber || 'N/A',
+        ordered_items: orderedItems,
+        total_amount: totalAmount,
+      });
+      setShowOrderTypeModal(true);
+    }
+  };
+
+  const handleOrderTypeSelect = async (orderType: 'dine-in' | 'parcel') => {
+    setShowOrderTypeModal(false);
+    setIsSubmitting(true);
+
+    try {
+      // Check table lock for dine-in orders
+      if (orderType === 'dine-in' && tableNumber) {
+        if (isTableLocked(tableNumber)) {
+          toast.error(
+            language === 'kn' 
+              ? 'ಈ ಟೇಬಲ್ ಈಗಾಗಲೇ ಸಕ್ರಿಯವಾಗಿದೆ. ದಯವಿಟ್ಟು ಸಿಬ್ಬಂದಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.' 
+              : 'This table is already active. Please contact staff.'
+          );
+          setIsSubmitting(false);
+          return;
+        }
       }
 
+      const orderData = {
+        ...pendingOrderData,
+        order_type: orderType,
+        table_number: orderType === 'parcel' ? 'PARCEL' : pendingOrderData.table_number,
+      };
+
+      const newOrder = await createOrder(orderData);
+
+      // Lock table for dine-in orders
+      if (orderType === 'dine-in' && tableNumber && newOrder) {
+        await lockTable(tableNumber, newOrder.id);
+      }
+
+      toast.success(language === 'kn' ? 'ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!' : 'Order placed successfully!');
       clearCart();
       navigate('/order-status');
     } catch (error) {
@@ -198,12 +249,14 @@ export default function CheckoutPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>{t('tableNumber')}</Label>
-                  <div className="h-12 flex items-center px-3 bg-secondary rounded-md font-medium">
-                    {tableNumber}
+                {tableNumber && (
+                  <div className="space-y-2">
+                    <Label>{t('tableNumber')}</Label>
+                    <div className="h-12 flex items-center px-3 bg-secondary rounded-md font-medium">
+                      {tableNumber}
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -224,6 +277,11 @@ export default function CheckoutPage() {
           </Button>
         </form>
       </main>
+
+      <OrderTypeModal
+        open={showOrderTypeModal}
+        onSelect={handleOrderTypeSelect}
+      />
     </div>
   );
 }
