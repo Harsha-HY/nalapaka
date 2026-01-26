@@ -34,6 +34,7 @@ export const translations: Translations = {
   chinese: { en: 'Chinese', kn: 'ಚೈನೀಸ್' },
   tandoor: { en: 'Tandoor', kn: 'ತಂದೂರ್' },
   all: { en: 'All', kn: 'ಎಲ್ಲಾ' },
+  notAvailable: { en: 'Not Available', kn: 'ಲಭ್ಯವಿಲ್ಲ' },
   
   // Cart
   cart: { en: 'Cart', kn: 'ಕಾರ್ಟ್' },
@@ -51,13 +52,18 @@ export const translations: Translations = {
   tableNumber: { en: 'Table Number', kn: 'ಟೇಬಲ್ ಸಂಖ್ಯೆ' },
   orderSummary: { en: 'Order Summary', kn: 'ಆರ್ಡರ್ ಸಾರಾಂಶ' },
   edit: { en: 'Edit', kn: 'ಸಂಪಾದಿಸಿ' },
+  addMoreItems: { en: 'Add More Items', kn: 'ಹೆಚ್ಚಿನ ಐಟಂಗಳನ್ನು ಸೇರಿಸಿ' },
+  myOrder: { en: 'My Order', kn: 'ನನ್ನ ಆರ್ಡರ್' },
+  orderHistory: { en: 'Order History', kn: 'ಆರ್ಡರ್ ಇತಿಹಾಸ' },
   
   // Status
   orderStatus: { en: 'Order Status', kn: 'ಆರ್ಡರ್ ಸ್ಥಿತಿ' },
   waitingConfirmation: { en: 'Waiting for confirmation', kn: 'ದೃಢೀಕರಣಕ್ಕಾಗಿ ಕಾಯುತ್ತಿದೆ' },
   orderConfirmed: { en: 'Your order has been confirmed', kn: 'ನಿಮ್ಮ ಆರ್ಡರ್ ದೃಢೀಕರಿಸಲಾಗಿದೆ' },
+  orderCancelled: { en: 'Your order has been cancelled / rejected', kn: 'ನಿಮ್ಮ ಆರ್ಡರ್ ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ / ತಿರಸ್ಕರಿಸಲಾಗಿದೆ' },
   pending: { en: 'Pending', kn: 'ಬಾಕಿ' },
   confirmed: { en: 'Confirmed', kn: 'ದೃಢೀಕರಿಸಲಾಗಿದೆ' },
+  cancelled: { en: 'Cancelled', kn: 'ರದ್ದಾಗಿದೆ' },
   
   // Payment
   payment: { en: 'Payment', kn: 'ಪಾವತಿ' },
@@ -66,12 +72,20 @@ export const translations: Translations = {
   onlinePayment: { en: 'Online Payment', kn: 'ಆನ್‌ಲೈನ್ ಪಾವತಿ' },
   notPaid: { en: 'Not Paid', kn: 'ಪಾವತಿಸಿಲ್ಲ' },
   paid: { en: 'Paid', kn: 'ಪಾವತಿಸಲಾಗಿದೆ' },
+  finishedEating: { en: 'Finished Eating?', kn: 'ಊಟ ಮುಗಿದಿದೆಯೇ?' },
+  everythingFinished: { en: 'Everything is finished - Proceed to Payment', kn: 'ಎಲ್ಲವೂ ಮುಗಿದಿದೆ - ಪಾವತಿಗೆ ಮುಂದುವರಿಯಿರಿ' },
+  paymentComplete: { en: 'Payment completed successfully!', kn: 'ಪಾವತಿ ಯಶಸ್ವಿಯಾಗಿ ಪೂರ್ಣಗೊಂಡಿದೆ!' },
+  iHavePaid: { en: 'I have paid', kn: 'ನಾನು ಪಾವತಿಸಿದ್ದೇನೆ' },
+  waitingPaymentConfirmation: { en: 'Waiting for payment confirmation', kn: 'ಪಾವತಿ ದೃಢೀಕರಣಕ್ಕಾಗಿ ಕಾಯುತ್ತಿದ್ದೇವೆ' },
+  thankYou: { en: 'Thank you for dining with us!', kn: 'ನಮ್ಮೊಂದಿಗೆ ಊಟ ಮಾಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು!' },
   
   // Manager
   managerDashboard: { en: 'Manager Dashboard', kn: 'ಮ್ಯಾನೇಜರ್ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್' },
   allOrders: { en: 'All Orders', kn: 'ಎಲ್ಲಾ ಆರ್ಡರ್‌ಗಳು' },
   printBill: { en: 'Print Bill', kn: 'ಬಿಲ್ ಮುದ್ರಿಸಿ' },
   noOrders: { en: 'No orders yet', kn: 'ಇನ್ನೂ ಆರ್ಡರ್‌ಗಳಿಲ್ಲ' },
+  menuControl: { en: 'Menu Control', kn: 'ಮೆನು ನಿಯಂತ್ರಣ' },
+  history: { en: 'History', kn: 'ಇತಿಹಾಸ' },
   
   // General
   enterTableNumber: { en: 'Enter your table number', kn: 'ನಿಮ್ಮ ಟೇಬಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ' },
