@@ -1,29 +1,63 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Clock, 
   CheckCircle, 
   Home, 
   CreditCard, 
-  Banknote, 
-  Smartphone, 
   XCircle,
   Plus,
   UtensilsCrossed,
-  History
+  History,
+  LogOut,
+  Package
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useOrders } from '@/hooks/useOrders';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOrders, Order } from '@/hooks/useOrders';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { CountdownTimer } from '@/components/CountdownTimer';
 import { toast } from 'sonner';
 
 export default function OrderStatusPage() {
   const { t, language } = useLanguage();
-  const { currentOrder, updatePayment, markEatingFinished } = useOrders();
+  const { signOut } = useAuth();
+  const { currentOrder, markEatingFinished } = useOrders();
   const navigate = useNavigate();
-  const [hasMarkedPaid, setHasMarkedPaid] = useState(false);
+  const [autoLogoutCountdown, setAutoLogoutCountdown] = useState<number | null>(null);
+
+  // Auto logout after payment confirmed
+  const handleAutoLogout = useCallback(async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  }, [signOut, navigate]);
+
+  useEffect(() => {
+    if (currentOrder?.payment_confirmed && autoLogoutCountdown === null) {
+      setAutoLogoutCountdown(15);
+    }
+  }, [currentOrder?.payment_confirmed, autoLogoutCountdown]);
+
+  useEffect(() => {
+    if (autoLogoutCountdown === null) return;
+    if (autoLogoutCountdown <= 0) {
+      handleAutoLogout();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setAutoLogoutCountdown(prev => prev !== null ? prev - 1 : null);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [autoLogoutCountdown, handleAutoLogout]);
 
   if (!currentOrder) {
     return (
@@ -40,9 +74,11 @@ export default function OrderStatusPage() {
   const isPending = currentOrder.order_status === 'Pending';
   const isConfirmed = currentOrder.order_status === 'Confirmed';
   const isCancelled = currentOrder.order_status === 'Cancelled';
-  const eatingFinished = (currentOrder as any).eating_finished;
-  const paymentConfirmed = (currentOrder as any).payment_confirmed;
-  const isPaid = currentOrder.payment_mode !== 'Not Paid';
+  const eatingFinished = currentOrder.eating_finished;
+  const paymentConfirmed = currentOrder.payment_confirmed;
+  const orderType = (currentOrder as Order).order_type || 'dine-in';
+  const waitTimeMinutes = (currentOrder as Order).wait_time_minutes;
+  const confirmedAt = (currentOrder as Order).confirmed_at;
 
   const orderedItems = currentOrder.ordered_items as Array<{
     name: string;
@@ -54,43 +90,10 @@ export default function OrderStatusPage() {
   const handleMarkFinished = async () => {
     try {
       await markEatingFinished(currentOrder.id);
-      toast.success(language === 'kn' ? 'ಪಾವತಿ ಆಯ್ಕೆಗಳು ಸಕ್ರಿಯಗೊಂಡಿವೆ' : 'Payment options enabled');
+      toast.success(language === 'kn' ? 'ಮ್ಯಾನೇಜರ್ ಪಾವತಿಯನ್ನು ದೃಢೀಕರಿಸುತ್ತಾರೆ' : 'Payment confirmation pending from manager');
     } catch (error) {
       toast.error('Failed to update');
     }
-  };
-
-  const handleCashPayment = async () => {
-    try {
-      await updatePayment(currentOrder.id, 'Cash');
-      toast.success(language === 'kn' ? 'ನಗದು ಪಾವತಿ ಆಯ್ಕೆ ಮಾಡಲಾಗಿದೆ' : 'Cash payment selected');
-    } catch (error) {
-      toast.error('Failed to update payment');
-    }
-  };
-
-  const handleOnlinePayment = async () => {
-    // UPI deep link with manager's UPI ID
-    const upiId = '8951525788@ybl';
-    const amount = currentOrder.total_amount;
-    const name = 'Nalapaka Nanjangud';
-    const note = `Order for Table ${currentOrder.table_number}`;
-    
-    const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}&am=${amount}&tn=${encodeURIComponent(note)}`;
-    
-    window.location.href = upiUrl;
-    
-    // Update payment mode after redirect attempt
-    try {
-      await updatePayment(currentOrder.id, 'Online');
-    } catch (error) {
-      console.log('Payment update pending');
-    }
-  };
-
-  const handleIHavePaid = () => {
-    setHasMarkedPaid(true);
-    toast.info(language === 'kn' ? 'ಮ್ಯಾನೇಜರ್ ಪಾವತಿಯನ್ನು ದೃಢೀಕರಿಸುತ್ತಾರೆ' : 'Manager will confirm the payment');
   };
 
   return (
@@ -111,8 +114,17 @@ export default function OrderStatusPage() {
           <>
             <CheckCircle className="h-12 w-12" />
             <h1 className="text-2xl font-bold text-center">
-              {language === 'kn' ? 'ಪಾವತಿ ಯಶಸ್ವಿಯಾಗಿ ಪೂರ್ಣಗೊಂಡಿದೆ!' : 'Payment completed successfully!'}
+              {language === 'kn' 
+                ? `ಪಾವತಿ ಪೂರ್ಣಗೊಂಡಿದೆ (${currentOrder.payment_mode === 'Cash' ? 'ನಗದು' : 'UPI'})` 
+                : `Payment completed (${currentOrder.payment_mode})`}
             </h1>
+            {autoLogoutCountdown !== null && (
+              <p className="text-sm mt-2">
+                {language === 'kn' 
+                  ? `${autoLogoutCountdown} ಸೆಕೆಂಡುಗಳಲ್ಲಿ ಲಾಗ್ಔಟ್ ಆಗುತ್ತಿದ್ದೀರಿ...` 
+                  : `Logging out in ${autoLogoutCountdown} seconds...`}
+              </p>
+            )}
           </>
         ) : isCancelled ? (
           <>
@@ -125,6 +137,11 @@ export default function OrderStatusPage() {
           <>
             <CheckCircle className="h-12 w-12" />
             <h1 className="text-2xl font-bold text-center">{t('orderConfirmed')}</h1>
+            {waitTimeMinutes && confirmedAt && (
+              <div className="mt-2">
+                <CountdownTimer confirmedAt={confirmedAt} waitTimeMinutes={waitTimeMinutes} />
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -137,15 +154,26 @@ export default function OrderStatusPage() {
       <main className="flex-1 container py-6 space-y-6">
         {/* Order details */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{t('orderSummary')}</CardTitle>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">{t('orderSummary')}</CardTitle>
+              <Badge variant={orderType === 'parcel' ? 'secondary' : 'outline'}>
+                {orderType === 'parcel' ? (
+                  <><Package className="h-3 w-3 mr-1" /> PARCEL</>
+                ) : (
+                  <><UtensilsCrossed className="h-3 w-3 mr-1" /> DINE-IN</>
+                )}
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t('tableNumber')}</span>
-                <span className="font-medium">{currentOrder.table_number}</span>
-              </div>
+              {orderType === 'dine-in' && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{t('tableNumber')}</span>
+                  <span className="font-medium">{currentOrder.table_number}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('customerName')}</span>
                 <span className="font-medium">{currentOrder.customer_name}</span>
@@ -198,63 +226,27 @@ export default function OrderStatusPage() {
                 className="w-full h-12"
                 onClick={handleMarkFinished}
               >
-                {language === 'kn' ? 'ಎಲ್ಲವೂ ಮುಗಿದಿದೆ - ಪಾವತಿಗೆ ಮುಂದುವರಿಯಿರಿ' : 'Everything is finished - Proceed to Payment'}
+                {language === 'kn' ? 'ಎಲ್ಲವೂ ಮುಗಿದಿದೆ' : 'Everything is finished'}
               </Button>
             </CardContent>
           </Card>
         )}
 
-        {/* Payment options - show after eating is finished */}
-        {isConfirmed && eatingFinished && !paymentConfirmed && !isPaid && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">{t('paymentOptions')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                variant="outline"
-                className="w-full h-14 justify-start text-lg"
-                onClick={handleCashPayment}
-              >
-                <Banknote className="h-6 w-6 mr-3" />
-                {t('cash')}
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full h-14 justify-start text-lg"
-                onClick={handleOnlinePayment}
-              >
-                <Smartphone className="h-6 w-6 mr-3" />
-                {t('onlinePayment')} (UPI)
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Payment selected - waiting for manager confirmation */}
-        {isConfirmed && eatingFinished && isPaid && !paymentConfirmed && (
+        {/* Payment status - waiting for manager */}
+        {isConfirmed && eatingFinished && !paymentConfirmed && (
           <Card className="border-yellow-500">
             <CardContent className="py-6 space-y-4">
               <div className="text-center">
                 <Clock className="h-10 w-10 mx-auto mb-2 text-yellow-600 animate-pulse" />
                 <p className="text-lg font-medium">
-                  {currentOrder.payment_mode === 'Cash' 
-                    ? (language === 'kn' ? 'ನಗದು ಪಾವತಿಗಾಗಿ ಕಾಯುತ್ತಿದ್ದೇವೆ' : 'Waiting for cash payment confirmation')
-                    : (language === 'kn' ? 'ಆನ್‌ಲೈನ್ ಪಾವತಿ ದೃಢೀಕರಣಕ್ಕಾಗಿ ಕಾಯುತ್ತಿದ್ದೇವೆ' : 'Waiting for online payment confirmation')
-                  }
+                  {language === 'kn' ? 'ಪಾವತಿ ಬಾಕಿ' : 'Payment pending'}
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {language === 'kn' ? 'ಮ್ಯಾನೇಜರ್ ಪಾವತಿಯನ್ನು ದೃಢೀಕರಿಸುತ್ತಾರೆ' : 'Manager will confirm the payment'}
+                  {language === 'kn' 
+                    ? 'ಮ್ಯಾನೇಜರ್ ಪಾವತಿಯನ್ನು ದೃಢೀಕರಿಸುತ್ತಾರೆ' 
+                    : 'Manager will confirm the payment'}
                 </p>
               </div>
-              {currentOrder.payment_mode === 'Online' && !hasMarkedPaid && (
-                <Button
-                  className="w-full"
-                  onClick={handleIHavePaid}
-                >
-                  {language === 'kn' ? 'ನಾನು ಪಾವತಿಸಿದ್ದೇನೆ' : 'I have paid'}
-                </Button>
-              )}
             </CardContent>
           </Card>
         )}
@@ -270,29 +262,41 @@ export default function OrderStatusPage() {
               <p className="text-sm text-muted-foreground mt-2">
                 {language === 'kn' ? 'ನಮ್ಮೊಂದಿಗೆ ಊಟ ಮಾಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು!' : 'Thank you for dining with us!'}
               </p>
+              <Button 
+                className="mt-4" 
+                variant="outline"
+                onClick={handleAutoLogout}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                {language === 'kn' ? 'ಈಗ ಲಾಗ್ಔಟ್' : 'Logout Now'}
+              </Button>
             </CardContent>
           </Card>
         )}
 
         {/* Order History Button */}
-        <Button
-          variant="outline"
-          className="w-full h-12"
-          onClick={() => navigate('/order-history')}
-        >
-          <History className="h-4 w-4 mr-2" />
-          {language === 'kn' ? 'ಆರ್ಡರ್ ಇತಿಹಾಸ' : 'Order History'}
-        </Button>
+        {!paymentConfirmed && (
+          <Button
+            variant="outline"
+            className="w-full h-12"
+            onClick={() => navigate('/order-history')}
+          >
+            <History className="h-4 w-4 mr-2" />
+            {language === 'kn' ? 'ಆರ್ಡರ್ ಇತಿಹಾಸ' : 'Order History'}
+          </Button>
+        )}
 
-        {/* Back to menu */}
-        <Button
-          variant="outline"
-          className="w-full h-12"
-          onClick={() => navigate('/menu')}
-        >
-          <Home className="h-4 w-4 mr-2" />
-          {t('menu')}
-        </Button>
+        {/* Back to menu - only when not payment confirmed */}
+        {!paymentConfirmed && (
+          <Button
+            variant="outline"
+            className="w-full h-12"
+            onClick={() => navigate('/menu')}
+          >
+            <Home className="h-4 w-4 mr-2" />
+            {t('menu')}
+          </Button>
+        )}
       </main>
     </div>
   );

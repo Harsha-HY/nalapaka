@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, CheckCircle, XCircle, CreditCard } from 'lucide-react';
+import { ArrowLeft, CheckCircle, CreditCard, Package, UtensilsCrossed } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useOrders } from '@/hooks/useOrders';
+import { useOrders, Order } from '@/hooks/useOrders';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,9 @@ export default function OrderHistoryPage() {
   const { t, language } = useLanguage();
   const { orders, isLoading } = useOrders();
   const navigate = useNavigate();
+
+  // Only show completed (paid) orders for customers
+  const completedOrders = orders.filter(o => o.payment_confirmed);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString(language === 'kn' ? 'kn-IN' : 'en-IN', {
@@ -24,7 +27,7 @@ export default function OrderHistoryPage() {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background border-b">
         <div className="container py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/menu')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/order-status')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-xl font-bold">
@@ -38,20 +41,17 @@ export default function OrderHistoryPage() {
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           </div>
-        ) : orders.length === 0 ? (
+        ) : completedOrders.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-xl text-muted-foreground">
-              {language === 'kn' ? 'ಯಾವುದೇ ಆರ್ಡರ್‌ಗಳಿಲ್ಲ' : 'No orders yet'}
+              {language === 'kn' ? 'ಯಾವುದೇ ಪೂರ್ಣಗೊಂಡ ಆರ್ಡರ್‌ಗಳಿಲ್ಲ' : 'No completed orders yet'}
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {orders.map((order) => {
-              const isPending = order.order_status === 'Pending';
-              const isConfirmed = order.order_status === 'Confirmed';
-              const isCancelled = order.order_status === 'Cancelled';
-              const paymentConfirmed = (order as any).payment_confirmed;
-
+            {completedOrders.map((order) => {
+              const orderType = (order as Order).order_type || 'dine-in';
+              
               const orderedItems = order.ordered_items as Array<{
                 name: string;
                 nameKn: string;
@@ -60,46 +60,26 @@ export default function OrderHistoryPage() {
               }>;
 
               return (
-                <Card
-                  key={order.id}
-                  className={`${
-                    paymentConfirmed
-                      ? 'border-green-200'
-                      : isCancelled
-                      ? 'border-red-200'
-                      : isPending
-                      ? 'border-yellow-200'
-                      : 'border-blue-200'
-                  }`}
-                >
+                <Card key={order.id} className="border-green-200 bg-green-50/30 dark:bg-green-900/10">
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">
-                        {language === 'kn' ? 'ಟೇಬಲ್' : 'Table'} {order.table_number}
-                      </CardTitle>
                       <div className="flex items-center gap-2">
-                        {paymentConfirmed ? (
-                          <Badge className="bg-green-600">
-                            <CreditCard className="h-3 w-3 mr-1" />
-                            {language === 'kn' ? 'ಪಾವತಿಸಲಾಗಿದೆ' : 'Paid'}
-                          </Badge>
-                        ) : isCancelled ? (
-                          <Badge variant="destructive">
-                            <XCircle className="h-3 w-3 mr-1" />
-                            {language === 'kn' ? 'ರದ್ದಾಗಿದೆ' : 'Cancelled'}
-                          </Badge>
-                        ) : isConfirmed ? (
-                          <Badge>
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            {t('confirmed')}
+                        {orderType === 'parcel' ? (
+                          <Badge variant="secondary">
+                            <Package className="h-3 w-3 mr-1" />
+                            PARCEL
                           </Badge>
                         ) : (
-                          <Badge variant="secondary">
-                            <Clock className="h-3 w-3 mr-1" />
-                            {t('pending')}
-                          </Badge>
+                          <CardTitle className="text-base flex items-center gap-1">
+                            <UtensilsCrossed className="h-4 w-4" />
+                            {language === 'kn' ? 'ಟೇಬಲ್' : 'Table'} {order.table_number}
+                          </CardTitle>
                         )}
                       </div>
+                      <Badge className="bg-green-600">
+                        <CreditCard className="h-3 w-3 mr-1" />
+                        {order.payment_mode}
+                      </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {formatDate(order.created_at)}

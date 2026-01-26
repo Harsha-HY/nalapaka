@@ -86,6 +86,16 @@ export const translations: Translations = {
   noOrders: { en: 'No orders yet', kn: 'ಇನ್ನೂ ಆರ್ಡರ್‌ಗಳಿಲ್ಲ' },
   menuControl: { en: 'Menu Control', kn: 'ಮೆನು ನಿಯಂತ್ರಣ' },
   history: { en: 'History', kn: 'ಇತಿಹಾಸ' },
+  dineIn: { en: 'Dine-in', kn: 'ಡೈನ್-ಇನ್' },
+  parcel: { en: 'Parcel', kn: 'ಪಾರ್ಸೆಲ್' },
+  selectOrderType: { en: 'Select Order Type', kn: 'ಆರ್ಡರ್ ಪ್ರಕಾರವನ್ನು ಆಯ್ಕೆಮಾಡಿ' },
+  hereOnly: { en: 'Here only (Dine-in)', kn: 'ಇಲ್ಲಿಯೇ (ಡೈನ್-ಇನ್)' },
+  takeParcel: { en: 'Take a Parcel', kn: 'ಪಾರ್ಸೆಲ್ ತೆಗೆದುಕೊಳ್ಳಿ' },
+  tableLockedError: { en: 'This table is already active. Please contact staff.', kn: 'ಈ ಟೇಬಲ್ ಈಗಾಗಲೇ ಸಕ್ರಿಯವಾಗಿದೆ. ದಯವಿಟ್ಟು ಸಿಬ್ಬಂದಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.' },
+  orderReady: { en: 'Your order will be ready in', kn: 'ನಿಮ್ಮ ಆರ್ಡರ್ ಸಿದ್ಧವಾಗುತ್ತದೆ' },
+  minutes: { en: 'minutes', kn: 'ನಿಮಿಷಗಳು' },
+  autoLogout: { en: 'Logging out in', kn: 'ಲಾಗ್ಔಟ್ ಆಗುತ್ತಿದ್ದೀರಿ' },
+  seconds: { en: 'seconds', kn: 'ಸೆಕೆಂಡುಗಳು' },
   
   // General
   enterTableNumber: { en: 'Enter your table number', kn: 'ನಿಮ್ಮ ಟೇಬಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ' },
