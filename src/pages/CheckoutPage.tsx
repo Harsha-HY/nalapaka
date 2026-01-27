@@ -12,12 +12,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { OrderTypeModal } from '@/components/OrderTypeModal';
+import { TableNumberModal } from '@/components/TableNumberModal';
 import { toast } from 'sonner';
 
 export default function CheckoutPage() {
   const { items, totalAmount, clearCart } = useCart();
   const { t, language } = useLanguage();
-  const { tableNumber } = useTableNumber();
+  const { tableNumber, saveTableNumber } = useTableNumber();
   const { currentOrder, createOrder, addItemsToOrder } = useOrders();
   const { isTableLocked, lockTable } = useLockedTables();
   const navigate = useNavigate();
@@ -26,6 +27,8 @@ export default function CheckoutPage() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOrderTypeModal, setShowOrderTypeModal] = useState(false);
+  const [showTableModal, setShowTableModal] = useState(false);
+  const [selectedOrderType, setSelectedOrderType] = useState<'dine-in' | 'parcel' | null>(null);
   const [pendingOrderData, setPendingOrderData] = useState<any>(null);
 
   // Check if there's an active order to add items to
@@ -87,7 +90,6 @@ export default function CheckoutPage() {
       setPendingOrderData({
         customer_name: customerName.trim(),
         phone_number: phoneNumber.trim(),
-        table_number: tableNumber || 'N/A',
         ordered_items: orderedItems,
         total_amount: totalAmount,
       });
@@ -97,16 +99,43 @@ export default function CheckoutPage() {
 
   const handleOrderTypeSelect = async (orderType: 'dine-in' | 'parcel') => {
     setShowOrderTypeModal(false);
+    setSelectedOrderType(orderType);
+
+    if (orderType === 'parcel') {
+      // For parcel, proceed directly without table number
+      await createOrderWithType('parcel', 'PARCEL');
+    } else {
+      // For dine-in, ask for table number
+      if (tableNumber) {
+        // Already have a table number, check if it's locked
+        if (isTableLocked(tableNumber)) {
+          setShowTableModal(true);
+        } else {
+          await createOrderWithType('dine-in', tableNumber);
+        }
+      } else {
+        setShowTableModal(true);
+      }
+    }
+  };
+
+  const handleTableNumberSave = async (table: string) => {
+    setShowTableModal(false);
+    saveTableNumber(table);
+    await createOrderWithType('dine-in', table);
+  };
+
+  const createOrderWithType = async (orderType: 'dine-in' | 'parcel', table: string) => {
     setIsSubmitting(true);
 
     try {
-      // Check table lock for dine-in orders
-      if (orderType === 'dine-in' && tableNumber) {
-        if (isTableLocked(tableNumber)) {
+      // For dine-in, check table lock again
+      if (orderType === 'dine-in' && table !== 'PARCEL') {
+        if (isTableLocked(table)) {
           toast.error(
             language === 'kn' 
-              ? 'ಈ ಟೇಬಲ್ ಈಗಾಗಲೇ ಸಕ್ರಿಯವಾಗಿದೆ. ದಯವಿಟ್ಟು ಸಿಬ್ಬಂದಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.' 
-              : 'This table is already active. Please contact staff.'
+              ? 'ಈ ಟೇಬಲ್ ತುಂಬಿದೆ. ದಯವಿಟ್ಟು ಹೋಟೆಲ್ ನಿರ್ವಹಣೆಯನ್ನು ಸಂಪರ್ಕಿಸಿ.' 
+              : 'This table is filled. Please contact hotel management.'
           );
           setIsSubmitting(false);
           return;
@@ -116,14 +145,14 @@ export default function CheckoutPage() {
       const orderData = {
         ...pendingOrderData,
         order_type: orderType,
-        table_number: orderType === 'parcel' ? 'PARCEL' : pendingOrderData.table_number,
+        table_number: table,
       };
 
       const newOrder = await createOrder(orderData);
 
       // Lock table for dine-in orders
-      if (orderType === 'dine-in' && tableNumber && newOrder) {
-        await lockTable(tableNumber, newOrder.id);
+      if (orderType === 'dine-in' && table !== 'PARCEL' && newOrder) {
+        await lockTable(table, newOrder.id);
       }
 
       toast.success(language === 'kn' ? 'ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!' : 'Order placed successfully!');
@@ -165,7 +194,12 @@ export default function CheckoutPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                <p>{language === 'kn' ? 'ಟೇಬಲ್' : 'Table'} {currentOrder.table_number} • {currentOrder.customer_name}</p>
+                <p>
+                  {(currentOrder as any).order_type === 'parcel' 
+                    ? 'PARCEL' 
+                    : `${language === 'kn' ? 'ಟೇಬಲ್' : 'Table'} ${currentOrder.table_number}`
+                  } • {currentOrder.customer_name}
+                </p>
                 <p>{language === 'kn' ? 'ಪ್ರಸ್ತುತ ಒಟ್ಟು' : 'Current total'}: ₹{currentOrder.total_amount}</p>
               </CardContent>
             </Card>
@@ -248,15 +282,6 @@ export default function CheckoutPage() {
                     className="h-12"
                   />
                 </div>
-
-                {tableNumber && (
-                  <div className="space-y-2">
-                    <Label>{t('tableNumber')}</Label>
-                    <div className="h-12 flex items-center px-3 bg-secondary rounded-md font-medium">
-                      {tableNumber}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}
@@ -272,15 +297,24 @@ export default function CheckoutPage() {
             ) : hasActiveOrder ? (
               language === 'kn' ? 'ಆರ್ಡರ್‌ಗೆ ಐಟಂಗಳನ್ನು ಸೇರಿಸಿ' : 'Add Items to Order'
             ) : (
-              t('confirmOrder')
+              t('proceedOrder')
             )}
           </Button>
         </form>
       </main>
 
+      {/* Order Type Modal */}
       <OrderTypeModal
         open={showOrderTypeModal}
         onSelect={handleOrderTypeSelect}
+      />
+
+      {/* Table Number Modal for Dine-in */}
+      <TableNumberModal
+        open={showTableModal}
+        onSave={handleTableNumberSave}
+        onClose={() => setShowTableModal(false)}
+        showCloseButton={true}
       />
     </div>
   );

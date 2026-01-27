@@ -4,13 +4,11 @@ import { Search, LogOut } from 'lucide-react';
 import { useMenuItems, MenuItem } from '@/hooks/useMenuItems';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTableNumber } from '@/hooks/useTableNumber';
 import { useOrders } from '@/hooks/useOrders';
 import { useCart } from '@/contexts/CartContext';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { FloatingCart } from '@/components/FloatingCart';
 import { OrderStatusBanner } from '@/components/OrderStatusBanner';
-import { TableNumberModal } from '@/components/TableNumberModal';
 import { MenuItemCard } from '@/components/MenuItemCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -33,10 +31,8 @@ const getCategoryLabel = (category: string, language: 'en' | 'kn'): string => {
 export default function MenuPage() {
   const { t, language } = useLanguage();
   const { signOut, isManager } = useAuth();
-  const { isTableSet, saveTableNumber } = useTableNumber();
   const { menuItems, isLoading: isMenuLoading } = useMenuItems();
   const { currentOrder } = useOrders();
-  const { items: cartItems } = useCart();
   const navigate = useNavigate();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -189,9 +185,6 @@ export default function MenuPage() {
 
       {/* Floating cart button */}
       <FloatingCart hasActiveOrder={hasActiveOrder} />
-
-      {/* Table number modal */}
-      <TableNumberModal open={!isTableSet} onSave={saveTableNumber} />
     </div>
   );
 }

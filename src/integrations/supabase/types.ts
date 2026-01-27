@@ -81,6 +81,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          archived_at: string | null
           confirmed_at: string | null
           created_at: string
           customer_name: string
@@ -90,6 +91,7 @@ export type Database = {
           order_type: Database["public"]["Enums"]["order_type"] | null
           ordered_items: Json
           payment_confirmed: boolean
+          payment_intent: string | null
           payment_mode: Database["public"]["Enums"]["payment_mode"]
           phone_number: string
           table_number: string
@@ -99,6 +101,7 @@ export type Database = {
           wait_time_minutes: number | null
         }
         Insert: {
+          archived_at?: string | null
           confirmed_at?: string | null
           created_at?: string
           customer_name: string
@@ -108,6 +111,7 @@ export type Database = {
           order_type?: Database["public"]["Enums"]["order_type"] | null
           ordered_items?: Json
           payment_confirmed?: boolean
+          payment_intent?: string | null
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
           phone_number: string
           table_number: string
@@ -117,6 +121,7 @@ export type Database = {
           wait_time_minutes?: number | null
         }
         Update: {
+          archived_at?: string | null
           confirmed_at?: string | null
           created_at?: string
           customer_name?: string
@@ -126,6 +131,7 @@ export type Database = {
           order_type?: Database["public"]["Enums"]["order_type"] | null
           ordered_items?: Json
           payment_confirmed?: boolean
+          payment_intent?: string | null
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
           phone_number?: string
           table_number?: string
