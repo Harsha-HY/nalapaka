@@ -1,5 +1,6 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, CreditCard, Package, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, CheckCircle, CreditCard, Package, UtensilsCrossed, Clock } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useOrders, Order } from '@/hooks/useOrders';
 import { Button } from '@/components/ui/button';
@@ -12,8 +13,20 @@ export default function OrderHistoryPage() {
   const { orders, isLoading } = useOrders();
   const navigate = useNavigate();
 
-  // Only show completed (paid) orders for customers
-  const completedOrders = orders.filter(o => o.payment_confirmed);
+  // Filter orders for customer - show last 48 hours of all orders + permanent for paid orders
+  const visibleOrders = useMemo(() => {
+    const now = new Date();
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+    return orders.filter(o => {
+      // Show all paid orders permanently
+      if (o.payment_confirmed) return true;
+      
+      // Show unpaid orders only if within last 48 hours
+      const orderDate = new Date(o.created_at);
+      return orderDate >= fortyEightHoursAgo;
+    });
+  }, [orders]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString(language === 'kn' ? 'kn-IN' : 'en-IN', {
@@ -41,16 +54,18 @@ export default function OrderHistoryPage() {
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           </div>
-        ) : completedOrders.length === 0 ? (
+        ) : visibleOrders.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-xl text-muted-foreground">
-              {language === 'kn' ? 'ಯಾವುದೇ ಪೂರ್ಣಗೊಂಡ ಆರ್ಡರ್‌ಗಳಿಲ್ಲ' : 'No completed orders yet'}
+              {language === 'kn' ? 'ಯಾವುದೇ ಆರ್ಡರ್‌ಗಳಿಲ್ಲ' : 'No orders yet'}
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {completedOrders.map((order) => {
+            {visibleOrders.map((order) => {
               const orderType = (order as Order).order_type || 'dine-in';
+              const isPaid = order.payment_confirmed;
+              const isCancelled = order.order_status === 'Cancelled';
               
               const orderedItems = order.ordered_items as Array<{
                 name: string;
@@ -60,7 +75,16 @@ export default function OrderHistoryPage() {
               }>;
 
               return (
-                <Card key={order.id} className="border-green-200 bg-green-50/30 dark:bg-green-900/10">
+                <Card 
+                  key={order.id} 
+                  className={
+                    isPaid 
+                      ? 'border-green-200 bg-green-50/30 dark:bg-green-900/10' 
+                      : isCancelled
+                      ? 'border-red-200 bg-red-50/30 dark:bg-red-900/10'
+                      : 'border-yellow-200 bg-yellow-50/30 dark:bg-yellow-900/10'
+                  }
+                >
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -76,10 +100,21 @@ export default function OrderHistoryPage() {
                           </CardTitle>
                         )}
                       </div>
-                      <Badge className="bg-green-600">
-                        <CreditCard className="h-3 w-3 mr-1" />
-                        {order.payment_mode}
-                      </Badge>
+                      {isPaid ? (
+                        <Badge className="bg-green-600">
+                          <CreditCard className="h-3 w-3 mr-1" />
+                          {order.payment_mode}
+                        </Badge>
+                      ) : isCancelled ? (
+                        <Badge variant="destructive">
+                          Cancelled
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {order.order_status}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {formatDate(order.created_at)}
@@ -106,12 +141,27 @@ export default function OrderHistoryPage() {
                       <span>{t('total')}</span>
                       <span className="text-primary">₹{order.total_amount}</span>
                     </div>
+                    
+                    {/* Status indicator */}
+                    {isPaid && (
+                      <div className="mt-2 flex items-center gap-1 text-green-600 text-sm">
+                        <CheckCircle className="h-4 w-4" />
+                        {language === 'kn' ? 'ಪಾವತಿಸಲಾಗಿದೆ' : 'Paid'}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
             })}
           </div>
         )}
+
+        {/* Note about auto-delete */}
+        <p className="text-xs text-center text-muted-foreground mt-6">
+          {language === 'kn' 
+            ? 'ಪಾವತಿಸದ ಆರ್ಡರ್‌ಗಳು 48 ಗಂಟೆಗಳ ನಂತರ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಅಳಿಸಲ್ಪಡುತ್ತವೆ' 
+            : 'Unpaid orders are automatically deleted after 48 hours'}
+        </p>
       </main>
     </div>
   );

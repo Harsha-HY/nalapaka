@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   RefreshCw, 
@@ -18,7 +18,8 @@ import {
   Smartphone,
   RotateCcw,
   Package,
-  LogOut
+  LogOut,
+  AlertCircle
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { WaitTimeSelector } from '@/components/WaitTimeSelector';
 import { CountdownTimer } from '@/components/CountdownTimer';
+import { ManagerHistorySection } from '@/components/ManagerHistorySection';
 import { toast } from 'sonner';
 
 export default function ManagerDashboard() {
@@ -44,7 +46,9 @@ export default function ManagerDashboard() {
     confirmPayment, 
     deleteOrder, 
     refreshOrders,
-    getTodayStats 
+    getTodayStats,
+    deleteDayHistory,
+    archiveTodayOrders
   } = useOrders();
   const { menuItems, toggleAvailability } = useMenuItems();
   const { unlockTable } = useLockedTables();
@@ -59,6 +63,30 @@ export default function ManagerDashboard() {
       navigate('/menu');
     }
   }, [isManager, navigate]);
+
+  // Get today's date for filtering
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  // Filter orders - Today's orders only for main view
+  const todayOrders = useMemo(() => {
+    return orders.filter(o => {
+      const orderDate = new Date(o.created_at);
+      orderDate.setHours(0, 0, 0, 0);
+      return orderDate.getTime() === today.getTime();
+    });
+  }, [orders, today]);
+
+  const pendingOrders = todayOrders.filter(o => 
+    o.order_status === 'Pending' || 
+    (o.order_status === 'Confirmed' && !o.payment_confirmed)
+  );
+  
+  const completedOrders = todayOrders.filter(o => o.payment_confirmed);
+  const { totalOrders, totalRevenue } = getTodayStats();
 
   if (!isManager) {
     return null;
@@ -87,19 +115,6 @@ export default function ManagerDashboard() {
       toast.success('Order rejected');
     } catch (error) {
       toast.error('Failed to reject order');
-    }
-  };
-
-  const handleDeleteOrder = async (orderId: string, tableNumber: string) => {
-    try {
-      await deleteOrder(orderId);
-      // Unlock table if it was a dine-in order
-      if (tableNumber && tableNumber !== 'PARCEL') {
-        await unlockTable(tableNumber);
-      }
-      toast.success('Order deleted');
-    } catch (error) {
-      toast.error('Failed to delete order');
     }
   };
 
@@ -137,6 +152,24 @@ export default function ManagerDashboard() {
   const handleLogout = async () => {
     await signOut();
     navigate('/');
+  };
+
+  const handleDeleteDayHistory = async (date: string) => {
+    try {
+      await deleteDayHistory(date);
+      toast.success('Day history deleted');
+    } catch (error) {
+      toast.error('Failed to delete history');
+    }
+  };
+
+  const handleMoveToHistory = async () => {
+    try {
+      await archiveTodayOrders();
+      toast.success('Orders moved to history');
+    } catch (error) {
+      toast.error('Failed to move orders');
+    }
   };
 
   const handlePrintBill = (order: Order) => {
@@ -213,49 +246,22 @@ export default function ManagerDashboard() {
     }
   };
 
-  // Filter orders
-  const pendingOrders = orders.filter(o => 
-    o.order_status === 'Pending' || 
-    (o.order_status === 'Confirmed' && !o.payment_confirmed)
-  );
-  const completedOrders = orders.filter(o => o.payment_confirmed);
-  const { totalOrders, totalRevenue } = getTodayStats();
-
   return (
     <div className="min-h-screen flex bg-background">
       {/* Left Sidebar - History */}
-      <aside className="w-80 border-r bg-muted/30 hidden lg:flex flex-col">
+      <aside className="w-96 border-r bg-muted/30 hidden lg:flex flex-col">
         <div className="p-4 border-b">
           <h2 className="font-bold text-lg flex items-center gap-2">
             <History className="h-5 w-5" />
-            Order History
+            Order History (Day-wise)
           </h2>
         </div>
-        <div className="flex-1 overflow-auto p-4 space-y-3">
-          {completedOrders.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No completed orders yet</p>
-          ) : (
-            completedOrders.slice(0, 20).map((order) => (
-              <Card key={order.id} className="bg-green-50 dark:bg-green-900/20">
-                <CardContent className="p-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-sm">{order.customer_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {order.order_type === 'parcel' ? 'PARCEL' : `Table ${order.table_number}`}
-                      </p>
-                    </div>
-                    <Badge variant="secondary" className="text-xs">
-                      ₹{order.total_amount}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(order.created_at).toLocaleTimeString()}
-                  </p>
-                </CardContent>
-              </Card>
-            ))
-          )}
+        <div className="flex-1 overflow-auto p-4">
+          <ManagerHistorySection 
+            orders={orders} 
+            onDeleteDayHistory={handleDeleteDayHistory}
+            onMoveToHistory={handleMoveToHistory}
+          />
         </div>
       </aside>
 
@@ -332,43 +338,49 @@ export default function ManagerDashboard() {
           {/* Orders Section */}
           {activeSection === 'orders' && (
             <div className="space-y-6">
-              {pendingOrders.length === 0 ? (
-                <div className="text-center py-12">
-                  <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-xl text-muted-foreground">No pending orders</p>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {pendingOrders.map((order) => (
-                    <PendingOrderCard
-                      key={order.id}
-                      order={order}
-                      language={language}
-                      onConfirm={() => handleConfirmOrder(order.id)}
-                      onReject={() => handleRejectOrder(order.id)}
-                      onPaymentCash={() => handlePaymentConfirm(order.id, 'Cash', order.table_number)}
-                      onPaymentUPI={() => handlePaymentConfirm(order.id, 'Online', order.table_number)}
-                      onResetTable={() => handleResetTable(order.table_number)}
-                    />
-                  ))}
-                </div>
-              )}
+              {/* Pending Orders */}
+              <div>
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-yellow-600" />
+                  Pending Orders ({pendingOrders.length})
+                </h2>
+                {pendingOrders.length === 0 ? (
+                  <div className="text-center py-12 bg-muted/30 rounded-lg">
+                    <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-xl text-muted-foreground">No pending orders</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {pendingOrders.map((order) => (
+                      <PendingOrderCard
+                        key={order.id}
+                        order={order}
+                        language={language}
+                        onConfirm={() => handleConfirmOrder(order.id)}
+                        onReject={() => handleRejectOrder(order.id)}
+                        onPaymentCash={() => handlePaymentConfirm(order.id, 'Cash', order.table_number)}
+                        onPaymentUPI={() => handlePaymentConfirm(order.id, 'Online', order.table_number)}
+                        onResetTable={() => handleResetTable(order.table_number)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Completed Orders Section */}
               {completedOrders.length > 0 && (
                 <div className="mt-8">
                   <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                     <CheckCircle className="h-5 w-5 text-green-600" />
-                    Completed Orders ({completedOrders.length})
+                    Completed Orders Today ({completedOrders.length})
                   </h2>
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {completedOrders.slice(0, 10).map((order) => (
+                    {completedOrders.map((order) => (
                       <CompletedOrderCard
                         key={order.id}
                         order={order}
                         language={language}
                         onPrint={() => handlePrintBill(order)}
-                        onDelete={() => handleDeleteOrder(order.id, order.table_number)}
                       />
                     ))}
                   </div>
@@ -420,20 +432,12 @@ export default function ManagerDashboard() {
 
           {/* History Section (Mobile) */}
           {activeSection === 'history' && (
-            <div className="space-y-4 lg:hidden">
-              {completedOrders.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No completed orders yet</p>
-              ) : (
-                completedOrders.map((order) => (
-                  <CompletedOrderCard
-                    key={order.id}
-                    order={order}
-                    language={language}
-                    onPrint={() => handlePrintBill(order)}
-                    onDelete={() => handleDeleteOrder(order.id, order.table_number)}
-                  />
-                ))
-              )}
+            <div className="lg:hidden">
+              <ManagerHistorySection 
+                orders={orders} 
+                onDeleteDayHistory={handleDeleteDayHistory}
+                onMoveToHistory={handleMoveToHistory}
+              />
             </div>
           )}
         </main>
@@ -481,6 +485,8 @@ function PendingOrderCard({
   const orderType = order.order_type || 'dine-in';
   const waitTimeMinutes = order.wait_time_minutes;
   const confirmedAt = order.confirmed_at;
+  const paymentIntent = (order as any).payment_intent;
+  const eatingFinished = order.eating_finished;
 
   const handleCall = () => {
     window.location.href = `tel:${order.phone_number}`;
@@ -502,11 +508,10 @@ function PendingOrderCard({
               <CardTitle className="text-lg">Table {order.table_number}</CardTitle>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Badge variant={isPending ? 'secondary' : 'default'}>
               {isPending ? 'PENDING' : 'CONFIRMED'}
             </Badge>
-            <Badge variant="outline">PAYMENT PENDING</Badge>
           </div>
         </div>
       </CardHeader>
@@ -526,6 +531,18 @@ function PendingOrderCard({
             </Button>
           </div>
         </div>
+
+        {/* Payment Intent - Show when customer has selected payment method */}
+        {eatingFinished && paymentIntent && (
+          <div className={`py-2 px-3 rounded-md flex items-center gap-2 ${
+            paymentIntent === 'Cash' ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-blue-100 dark:bg-blue-900/30'
+          }`}>
+            <AlertCircle className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              Customer {order.customer_name} paying through {paymentIntent}
+            </span>
+          </div>
+        )}
 
         {/* Timer */}
         {isConfirmed && waitTimeMinutes && confirmedAt && (
@@ -554,6 +571,11 @@ function PendingOrderCard({
           <span>Total</span>
           <span className="text-primary">₹{order.total_amount}</span>
         </div>
+
+        {/* Payment Status */}
+        <Badge variant="outline" className="w-full justify-center py-1">
+          PAYMENT PENDING
+        </Badge>
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-2 pt-2">
@@ -595,15 +617,14 @@ function PendingOrderCard({
   );
 }
 
-// Completed Order Card Component
+// Completed Order Card Component (Today only - no delete)
 interface CompletedOrderCardProps {
   order: Order;
   language: 'en' | 'kn';
   onPrint: () => void;
-  onDelete: () => void;
 }
 
-function CompletedOrderCard({ order, language, onPrint, onDelete }: CompletedOrderCardProps) {
+function CompletedOrderCard({ order, language, onPrint }: CompletedOrderCardProps) {
   const orderedItems = order.ordered_items as Array<{
     name: string;
     nameKn: string;
@@ -656,15 +677,10 @@ function CompletedOrderCard({ order, language, onPrint, onDelete }: CompletedOrd
           <span className="text-green-600">₹{order.total_amount}</span>
         </div>
 
-        <div className="flex gap-2 pt-2">
-          <Button variant="outline" size="sm" className="flex-1" onClick={onPrint}>
-            <Printer className="h-4 w-4 mr-1" />
-            Print Bill
-          </Button>
-          <Button variant="destructive" size="sm" onClick={onDelete}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" className="w-full" onClick={onPrint}>
+          <Printer className="h-4 w-4 mr-1" />
+          Print Bill
+        </Button>
       </CardContent>
     </Card>
   );

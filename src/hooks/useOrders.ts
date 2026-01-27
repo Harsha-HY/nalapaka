@@ -9,6 +9,8 @@ export type Order = OrderRow & {
   order_type?: 'dine-in' | 'parcel';
   wait_time_minutes?: number | null;
   confirmed_at?: string | null;
+  payment_intent?: string | null;
+  archived_at?: string | null;
 };
 
 type OrderInsert = Database['public']['Tables']['orders']['Insert'];
@@ -218,6 +220,51 @@ export function useOrders() {
     if (error) throw error;
   };
 
+  const updatePaymentIntent = async (orderId: string, intent: 'Cash' | 'UPI') => {
+    const { error } = await supabase
+      .from('orders')
+      .update({ payment_intent: intent } as any)
+      .eq('id', orderId);
+
+    if (error) throw error;
+  };
+
+  const deleteDayHistory = async (date: string) => {
+    // Delete all orders from a specific date
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .gte('created_at', startOfDay.toISOString())
+      .lte('created_at', endOfDay.toISOString());
+
+    if (error) throw error;
+    
+    // Refresh orders
+    await fetchOrders();
+  };
+
+  const archiveTodayOrders = async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const { error } = await supabase
+      .from('orders')
+      .update({ archived_at: new Date().toISOString() } as any)
+      .gte('created_at', today.toISOString())
+      .lt('created_at', tomorrow.toISOString())
+      .eq('payment_confirmed', true);
+
+    if (error) throw error;
+    await fetchOrders();
+  };
+
   // Get today's completed orders for summary
   const getTodayStats = () => {
     const today = new Date();
@@ -247,6 +294,9 @@ export function useOrders() {
     updatePayment,
     markEatingFinished,
     confirmPayment,
+    updatePaymentIntent,
+    deleteDayHistory,
+    archiveTodayOrders,
     getTodayStats,
     refreshOrders: fetchOrders,
   };

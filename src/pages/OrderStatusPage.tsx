@@ -20,14 +20,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { CountdownTimer } from '@/components/CountdownTimer';
+import { PaymentOptionsModal } from '@/components/PaymentOptionsModal';
+import { UPIPaymentModal } from '@/components/UPIPaymentModal';
 import { toast } from 'sonner';
 
 export default function OrderStatusPage() {
   const { t, language } = useLanguage();
   const { signOut } = useAuth();
-  const { currentOrder, markEatingFinished } = useOrders();
+  const { currentOrder, markEatingFinished, updatePaymentIntent } = useOrders();
   const navigate = useNavigate();
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState<number | null>(null);
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [showUPIModal, setShowUPIModal] = useState(false);
 
   // Auto logout after payment confirmed
   const handleAutoLogout = useCallback(async () => {
@@ -76,6 +80,7 @@ export default function OrderStatusPage() {
   const isCancelled = currentOrder.order_status === 'Cancelled';
   const eatingFinished = currentOrder.eating_finished;
   const paymentConfirmed = currentOrder.payment_confirmed;
+  const paymentIntent = (currentOrder as any).payment_intent;
   const orderType = (currentOrder as Order).order_type || 'dine-in';
   const waitTimeMinutes = (currentOrder as Order).wait_time_minutes;
   const confirmedAt = (currentOrder as Order).confirmed_at;
@@ -88,12 +93,44 @@ export default function OrderStatusPage() {
   }>;
 
   const handleMarkFinished = async () => {
+    // Show payment options modal
+    setShowPaymentOptions(true);
+  };
+
+  const handlePaymentMethodSelect = async (method: 'Cash' | 'UPI') => {
+    setShowPaymentOptions(false);
+    
     try {
+      // Update payment intent
+      if (updatePaymentIntent) {
+        await updatePaymentIntent(currentOrder.id, method);
+      }
+      
+      // Mark eating finished
       await markEatingFinished(currentOrder.id);
-      toast.success(language === 'kn' ? 'ಮ್ಯಾನೇಜರ್ ಪಾವತಿಯನ್ನು ದೃಢೀಕರಿಸುತ್ತಾರೆ' : 'Payment confirmation pending from manager');
+      
+      if (method === 'Cash') {
+        toast.info(
+          language === 'kn' 
+            ? 'ದಯವಿಟ್ಟು ನಗದು ಕೌಂಟರ್‌ಗೆ ಹೋಗಿ. ಮ್ಯಾನೇಜರ್ ದೃಢೀಕರಿಸುತ್ತಾರೆ.' 
+            : 'Please go to cash counter. Manager will confirm.'
+        );
+      } else {
+        // Show UPI modal
+        setShowUPIModal(true);
+      }
     } catch (error) {
       toast.error('Failed to update');
     }
+  };
+
+  const handleUPIPaymentInitiated = () => {
+    toast.success(
+      language === 'kn' 
+        ? 'ಪಾವತಿ ಪ್ರಾರಂಭಿಸಲಾಗಿದೆ. ಮ್ಯಾನೇಜರ್ ದೃಢೀಕರಿಸುತ್ತಾರೆ.' 
+        : 'Payment initiated. Manager will confirm.'
+    );
+    setShowUPIModal(false);
   };
 
   return (
@@ -115,9 +152,14 @@ export default function OrderStatusPage() {
             <CheckCircle className="h-12 w-12" />
             <h1 className="text-2xl font-bold text-center">
               {language === 'kn' 
-                ? `ಪಾವತಿ ಪೂರ್ಣಗೊಂಡಿದೆ (${currentOrder.payment_mode === 'Cash' ? 'ನಗದು' : 'UPI'})` 
-                : `Payment completed (${currentOrder.payment_mode})`}
+                ? 'ಪಾವತಿ ಯಶಸ್ವಿಯಾಗಿ ಪೂರ್ಣಗೊಂಡಿದೆ' 
+                : 'Payment completed successfully'}
             </h1>
+            <p className="text-sm">
+              {currentOrder.payment_mode === 'Cash' 
+                ? (language === 'kn' ? '(ನಗದು)' : '(Cash)') 
+                : (language === 'kn' ? '(UPI)' : '(UPI)')}
+            </p>
             {autoLogoutCountdown !== null && (
               <p className="text-sm mt-2">
                 {language === 'kn' 
@@ -241,12 +283,32 @@ export default function OrderStatusPage() {
                 <p className="text-lg font-medium">
                   {language === 'kn' ? 'ಪಾವತಿ ಬಾಕಿ' : 'Payment pending'}
                 </p>
+                {paymentIntent && (
+                  <Badge variant="outline" className="mt-2">
+                    {paymentIntent === 'Cash' 
+                      ? (language === 'kn' ? 'ನಗದು ಮೂಲಕ ಪಾವತಿ' : 'Paying via Cash')
+                      : (language === 'kn' ? 'UPI ಮೂಲಕ ಪಾವತಿ' : 'Paying via UPI')
+                    }
+                  </Badge>
+                )}
                 <p className="text-sm text-muted-foreground mt-2">
-                  {language === 'kn' 
-                    ? 'ಮ್ಯಾನೇಜರ್ ಪಾವತಿಯನ್ನು ದೃಢೀಕರಿಸುತ್ತಾರೆ' 
-                    : 'Manager will confirm the payment'}
+                  {paymentIntent === 'Cash'
+                    ? (language === 'kn' ? 'ದಯವಿಟ್ಟು ನಗದು ಕೌಂಟರ್‌ಗೆ ಹೋಗಿ' : 'Please go to cash counter')
+                    : (language === 'kn' ? 'ಮ್ಯಾನೇಜರ್ ಪಾವತಿಯನ್ನು ದೃಢೀಕರಿಸುತ್ತಾರೆ' : 'Manager will confirm the payment')
+                  }
                 </p>
               </div>
+              
+              {/* Re-trigger UPI if needed */}
+              {paymentIntent === 'UPI' && (
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => setShowUPIModal(true)}
+                >
+                  {language === 'kn' ? 'UPI ಅಪ್ಲಿಕೇಶನ್ ಮತ್ತೆ ತೆರೆಯಿರಿ' : 'Open UPI App Again'}
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}
@@ -298,6 +360,22 @@ export default function OrderStatusPage() {
           </Button>
         )}
       </main>
+
+      {/* Payment Options Modal */}
+      <PaymentOptionsModal
+        open={showPaymentOptions}
+        onSelect={handlePaymentMethodSelect}
+        onClose={() => setShowPaymentOptions(false)}
+        totalAmount={currentOrder.total_amount}
+      />
+
+      {/* UPI Payment Modal */}
+      <UPIPaymentModal
+        open={showUPIModal}
+        onClose={() => setShowUPIModal(false)}
+        totalAmount={currentOrder.total_amount}
+        onPaymentInitiated={handleUPIPaymentInitiated}
+      />
     </div>
   );
 }

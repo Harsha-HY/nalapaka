@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { UtensilsCrossed, Package } from 'lucide-react';
@@ -23,6 +24,9 @@ export function OrderTypeModal({ open, onSelect }: OrderTypeModalProps) {
           <DialogTitle className="text-center text-xl">
             {language === 'kn' ? 'ಆರ್ಡರ್ ಪ್ರಕಾರವನ್ನು ಆಯ್ಕೆಮಾಡಿ' : 'Select Order Type'}
           </DialogTitle>
+          <DialogDescription className="text-center">
+            {language === 'kn' ? 'ನಿಮ್ಮ ಆರ್ಡರ್ ಹೇಗೆ ಬೇಕು?' : 'How would you like your order?'}
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
           <Button
