@@ -14,28 +14,31 @@ export type Database = {
   }
   public: {
     Tables: {
-      locked_tables: {
+      locked_seats: {
         Row: {
           id: string
           locked_at: string
           order_id: string
+          seat: string
           table_number: string
         }
         Insert: {
           id?: string
           locked_at?: string
           order_id: string
+          seat: string
           table_number: string
         }
         Update: {
           id?: string
           locked_at?: string
           order_id?: string
+          seat?: string
           table_number?: string
         }
         Relationships: [
           {
-            foreignKeyName: "locked_tables_order_id_fkey"
+            foreignKeyName: "locked_seats_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
@@ -82,11 +85,14 @@ export type Database = {
       orders: {
         Row: {
           archived_at: string | null
+          base_items: Json | null
           confirmed_at: string | null
           created_at: string
           customer_name: string
           eating_finished: boolean
+          extra_items: Json | null
           id: string
+          order_stage: string | null
           order_status: Database["public"]["Enums"]["order_status"]
           order_type: Database["public"]["Enums"]["order_type"] | null
           ordered_items: Json
@@ -94,6 +100,7 @@ export type Database = {
           payment_intent: string | null
           payment_mode: Database["public"]["Enums"]["payment_mode"]
           phone_number: string
+          seats: string[] | null
           table_number: string
           total_amount: number
           updated_at: string
@@ -102,11 +109,14 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          base_items?: Json | null
           confirmed_at?: string | null
           created_at?: string
           customer_name: string
           eating_finished?: boolean
+          extra_items?: Json | null
           id?: string
+          order_stage?: string | null
           order_status?: Database["public"]["Enums"]["order_status"]
           order_type?: Database["public"]["Enums"]["order_type"] | null
           ordered_items?: Json
@@ -114,6 +124,7 @@ export type Database = {
           payment_intent?: string | null
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
           phone_number: string
+          seats?: string[] | null
           table_number: string
           total_amount?: number
           updated_at?: string
@@ -122,11 +133,14 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          base_items?: Json | null
           confirmed_at?: string | null
           created_at?: string
           customer_name?: string
           eating_finished?: boolean
+          extra_items?: Json | null
           id?: string
+          order_stage?: string | null
           order_status?: Database["public"]["Enums"]["order_status"]
           order_type?: Database["public"]["Enums"]["order_type"] | null
           ordered_items?: Json
@@ -134,6 +148,7 @@ export type Database = {
           payment_intent?: string | null
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
           phone_number?: string
+          seats?: string[] | null
           table_number?: string
           total_amount?: number
           updated_at?: string

@@ -64,6 +64,7 @@ export default function OrderHistoryPage() {
           <div className="space-y-4">
             {visibleOrders.map((order) => {
               const orderType = (order as Order).order_type || 'dine-in';
+              const seats = (order as any).seats || [];
               const isPaid = order.payment_confirmed;
               const isCancelled = order.order_status === 'Cancelled';
               
@@ -87,17 +88,22 @@ export default function OrderHistoryPage() {
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-1">
                         {orderType === 'parcel' ? (
                           <Badge variant="secondary">
                             <Package className="h-3 w-3 mr-1" />
                             PARCEL
                           </Badge>
                         ) : (
-                          <CardTitle className="text-base flex items-center gap-1">
-                            <UtensilsCrossed className="h-4 w-4" />
-                            {language === 'kn' ? 'ಟೇಬಲ್' : 'Table'} {order.table_number}
-                          </CardTitle>
+                          <>
+                            <CardTitle className="text-base flex items-center gap-1">
+                              <UtensilsCrossed className="h-4 w-4" />
+                              {language === 'kn' ? 'ಟೇಬಲ್' : 'Table'} {order.table_number}
+                            </CardTitle>
+                            {seats.length > 0 && (
+                              <Badge variant="outline" className="text-xs w-fit">Seats: {seats.join(', ')}</Badge>
+                            )}
+                          </>
                         )}
                       </div>
                       {isPaid ? (
