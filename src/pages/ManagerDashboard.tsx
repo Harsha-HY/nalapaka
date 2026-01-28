@@ -6,7 +6,6 @@ import {
   Clock, 
   Printer, 
   XCircle, 
-  Trash2,
   Phone,
   MessageCircle,
   Plus,
@@ -25,7 +24,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders, Order } from '@/hooks/useOrders';
 import { useMenuItems } from '@/hooks/useMenuItems';
-import { useLockedTables } from '@/hooks/useLockedTables';
+import { useLockedSeats } from '@/hooks/useLockedSeats';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +32,8 @@ import { Separator } from '@/components/ui/separator';
 import { WaitTimeSelector } from '@/components/WaitTimeSelector';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { ManagerHistorySection } from '@/components/ManagerHistorySection';
+import { OrderExtraItemsBadge } from '@/components/OrderExtraItemsBadge';
+import { printKitchenSlip, printBill } from '@/components/KitchenSlipPrint';
 import { toast } from 'sonner';
 
 export default function ManagerDashboard() {
@@ -51,7 +52,7 @@ export default function ManagerDashboard() {
     archiveTodayOrders
   } = useOrders();
   const { menuItems, toggleAvailability } = useMenuItems();
-  const { unlockTable } = useLockedTables();
+  const { unlockSeatsByOrderId } = useLockedSeats();
   const navigate = useNavigate();
   
   const [activeSection, setActiveSection] = useState<'orders' | 'menu' | 'history'>('orders');
@@ -112,31 +113,28 @@ export default function ManagerDashboard() {
   const handleRejectOrder = async (orderId: string) => {
     try {
       await cancelOrder(orderId);
+      await unlockSeatsByOrderId(orderId);
       toast.success('Order rejected');
     } catch (error) {
       toast.error('Failed to reject order');
     }
   };
 
-  const handlePaymentConfirm = async (orderId: string, paymentMode: 'Cash' | 'Online', tableNumber: string) => {
+  const handlePaymentConfirm = async (orderId: string, paymentMode: 'Cash' | 'Online') => {
     try {
       await confirmPayment(orderId, paymentMode);
-      // Unlock table for dine-in orders
-      if (tableNumber && tableNumber !== 'PARCEL') {
-        await unlockTable(tableNumber);
-      }
       toast.success(`Payment confirmed (${paymentMode})!`);
     } catch (error) {
       toast.error('Failed to confirm payment');
     }
   };
 
-  const handleResetTable = async (tableNumber: string) => {
+  const handleResetSeats = async (orderId: string) => {
     try {
-      await unlockTable(tableNumber);
-      toast.success(`Table ${tableNumber} has been reset`);
+      await unlockSeatsByOrderId(orderId);
+      toast.success('Seats have been reset');
     } catch (error) {
-      toast.error('Failed to reset table');
+      toast.error('Failed to reset seats');
     }
   };
 
@@ -172,78 +170,25 @@ export default function ManagerDashboard() {
     }
   };
 
+  const handlePrintKitchen = (order: Order, isExtra: boolean = false) => {
+    const items = isExtra 
+      ? ((order as any).extra_items || [])
+      : (order.ordered_items as any[] || []);
+    
+    if (items.length === 0) {
+      toast.error('No items to print');
+      return;
+    }
+    
+    printKitchenSlip(order, items, isExtra);
+  };
+
   const handlePrintBill = (order: Order) => {
     if (!order.payment_confirmed) {
       toast.error('Payment must be confirmed before printing bill');
       return;
     }
-
-    const orderedItems = order.ordered_items as Array<{
-      name: string;
-      nameKn: string;
-      quantity: number;
-      price: number;
-    }>;
-
-    const orderType = order.order_type || 'dine-in';
-
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Bill - Nalapaka</title>
-        <style>
-          body { font-family: 'Courier New', monospace; max-width: 300px; margin: 0 auto; padding: 20px; }
-          .header { text-align: center; margin-bottom: 20px; }
-          .header h1 { margin: 0; font-size: 24px; }
-          .header p { margin: 5px 0; font-size: 12px; }
-          .divider { border-top: 1px dashed #000; margin: 10px 0; }
-          .item { display: flex; justify-content: space-between; font-size: 12px; margin: 5px 0; }
-          .total { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 10px; }
-          .footer { text-align: center; margin-top: 20px; font-size: 10px; }
-          .info { font-size: 11px; margin: 3px 0; }
-          .badge { display: inline-block; padding: 2px 8px; background: #eee; border-radius: 4px; font-size: 10px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>NALAPAKA</h1>
-          <p>Nanjangud</p>
-          <p>${new Date().toLocaleString()}</p>
-        </div>
-        <div class="divider"></div>
-        <div class="info"><span class="badge">${orderType === 'parcel' ? 'PARCEL' : 'DINE-IN'}</span></div>
-        ${orderType === 'dine-in' ? `<div class="info">Table: ${order.table_number}</div>` : ''}
-        <div class="info">Customer: ${order.customer_name}</div>
-        <div class="info">Phone: ${order.phone_number}</div>
-        <div class="divider"></div>
-        ${orderedItems.map(item => `
-          <div class="item">
-            <span>${item.name} x ${item.quantity}</span>
-            <span>₹${item.price * item.quantity}</span>
-          </div>
-        `).join('')}
-        <div class="divider"></div>
-        <div class="total">
-          <span>TOTAL</span>
-          <span>₹${order.total_amount}</span>
-        </div>
-        <div class="divider"></div>
-        <div class="info">Payment: ${order.payment_mode} ✓</div>
-        <div class="footer">
-          <p>Thank you for dining with us!</p>
-          <p>Visit again!</p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.print();
-    }
+    printBill(order);
   };
 
   return (
@@ -358,9 +303,11 @@ export default function ManagerDashboard() {
                         language={language}
                         onConfirm={() => handleConfirmOrder(order.id)}
                         onReject={() => handleRejectOrder(order.id)}
-                        onPaymentCash={() => handlePaymentConfirm(order.id, 'Cash', order.table_number)}
-                        onPaymentUPI={() => handlePaymentConfirm(order.id, 'Online', order.table_number)}
-                        onResetTable={() => handleResetTable(order.table_number)}
+                        onPaymentCash={() => handlePaymentConfirm(order.id, 'Cash')}
+                        onPaymentUPI={() => handlePaymentConfirm(order.id, 'Online')}
+                        onResetSeats={() => handleResetSeats(order.id)}
+                        onPrintKitchen={() => handlePrintKitchen(order, false)}
+                        onPrintExtraKitchen={() => handlePrintKitchen(order, true)}
                       />
                     ))}
                   </div>
@@ -461,7 +408,9 @@ interface PendingOrderCardProps {
   onReject: () => void;
   onPaymentCash: () => void;
   onPaymentUPI: () => void;
-  onResetTable: () => void;
+  onResetSeats: () => void;
+  onPrintKitchen: () => void;
+  onPrintExtraKitchen: () => void;
 }
 
 function PendingOrderCard({ 
@@ -471,7 +420,9 @@ function PendingOrderCard({
   onReject,
   onPaymentCash,
   onPaymentUPI,
-  onResetTable
+  onResetSeats,
+  onPrintKitchen,
+  onPrintExtraKitchen
 }: PendingOrderCardProps) {
   const orderedItems = order.ordered_items as Array<{
     name: string;
@@ -483,10 +434,12 @@ function PendingOrderCard({
   const isPending = order.order_status === 'Pending';
   const isConfirmed = order.order_status === 'Confirmed';
   const orderType = order.order_type || 'dine-in';
+  const seats = (order as any).seats || [];
   const waitTimeMinutes = order.wait_time_minutes;
   const confirmedAt = order.confirmed_at;
   const paymentIntent = (order as any).payment_intent;
   const eatingFinished = order.eating_finished;
+  const extraItems = (order as any).extra_items || [];
 
   const handleCall = () => {
     window.location.href = `tel:${order.phone_number}`;
@@ -501,11 +454,16 @@ function PendingOrderCard({
     <Card className={`${isPending ? 'border-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/10' : 'border-blue-400 bg-blue-50/50 dark:bg-blue-900/10'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-1">
             {orderType === 'parcel' ? (
               <Badge variant="secondary"><Package className="h-3 w-3 mr-1" />PARCEL</Badge>
             ) : (
-              <CardTitle className="text-lg">Table {order.table_number}</CardTitle>
+              <>
+                <CardTitle className="text-lg">Table {order.table_number}</CardTitle>
+                {seats.length > 0 && (
+                  <Badge variant="outline" className="text-xs">Seats: {seats.join(', ')}</Badge>
+                )}
+              </>
             )}
           </div>
           <div className="flex items-center gap-1">
@@ -516,6 +474,20 @@ function PendingOrderCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Kitchen Print Button - TOP */}
+        <Button variant="outline" size="sm" className="w-full" onClick={onPrintKitchen}>
+          <Printer className="h-4 w-4 mr-1" />
+          Print Kitchen Slip
+        </Button>
+
+        {/* Extra Items Kitchen Print */}
+        {extraItems.length > 0 && (
+          <Button variant="outline" size="sm" className="w-full bg-accent" onClick={onPrintExtraKitchen}>
+            <Printer className="h-4 w-4 mr-1" />
+            Print EXTRA Items
+          </Button>
+        )}
+
         {/* Customer Info */}
         <div className="flex items-start justify-between">
           <div>
@@ -554,7 +526,7 @@ function PendingOrderCard({
 
         <Separator />
 
-        {/* Items */}
+        {/* Base Items */}
         <div className="space-y-1 max-h-32 overflow-auto">
           {orderedItems.map((item, index) => (
             <div key={index} className="flex justify-between text-sm">
@@ -563,6 +535,9 @@ function PendingOrderCard({
             </div>
           ))}
         </div>
+
+        {/* Extra Items Badge with time */}
+        <OrderExtraItemsBadge extraItems={extraItems} />
 
         <Separator />
 
@@ -605,11 +580,11 @@ function PendingOrderCard({
           )}
         </div>
 
-        {/* Reset Table Button */}
+        {/* Reset Seats Button */}
         {orderType === 'dine-in' && isConfirmed && (
-          <Button variant="ghost" size="sm" className="w-full" onClick={onResetTable}>
+          <Button variant="ghost" size="sm" className="w-full" onClick={onResetSeats}>
             <RotateCcw className="h-4 w-4 mr-1" />
-            Reset Table
+            Reset Seats
           </Button>
         )}
       </CardContent>
@@ -633,16 +608,22 @@ function CompletedOrderCard({ order, language, onPrint }: CompletedOrderCardProp
   }>;
 
   const orderType = order.order_type || 'dine-in';
+  const seats = (order as any).seats || [];
 
   return (
     <Card className="border-green-300 bg-green-50/50 dark:bg-green-900/10">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-1">
             {orderType === 'parcel' ? (
               <Badge variant="secondary"><Package className="h-3 w-3 mr-1" />PARCEL</Badge>
             ) : (
-              <CardTitle className="text-lg">Table {order.table_number}</CardTitle>
+              <>
+                <CardTitle className="text-lg">Table {order.table_number}</CardTitle>
+                {seats.length > 0 && (
+                  <Badge variant="outline" className="text-xs">Seats: {seats.join(', ')}</Badge>
+                )}
+              </>
             )}
           </div>
           <Badge className="bg-green-600">

@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, LogOut } from 'lucide-react';
+import { Search, LogOut, History } from 'lucide-react';
 import { useMenuItems, MenuItem } from '@/hooks/useMenuItems';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/hooks/useOrders';
 import { useCart } from '@/contexts/CartContext';
+import { useSessionResume } from '@/hooks/useSessionResume';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { FloatingCart } from '@/components/FloatingCart';
 import { OrderStatusBanner } from '@/components/OrderStatusBanner';
@@ -34,6 +35,9 @@ export default function MenuPage() {
   const { menuItems, isLoading: isMenuLoading } = useMenuItems();
   const { currentOrder } = useOrders();
   const navigate = useNavigate();
+  
+  // Use session resume hook
+  useSessionResume();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot>('all');
@@ -109,6 +113,9 @@ export default function MenuPage() {
               <p className="text-sm text-muted-foreground">Nanjangud</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/order-history')}>
+                <History className="h-5 w-5" />
+              </Button>
               <LanguageToggle />
               <Button variant="ghost" size="icon" onClick={handleLogout}>
                 <LogOut className="h-5 w-5" />

@@ -11,6 +11,10 @@ export type Order = OrderRow & {
   confirmed_at?: string | null;
   payment_intent?: string | null;
   archived_at?: string | null;
+  seats?: string[];
+  order_stage?: 'cart' | 'order_confirmed' | 'finished_eating' | 'payment_selected' | 'completed';
+  base_items?: any[];
+  extra_items?: any[];
 };
 
 type OrderInsert = Database['public']['Tables']['orders']['Insert'];
@@ -37,7 +41,7 @@ export function useOrders() {
       // Set current order (most recent active order for customer)
       if (!isManager && data && data.length > 0) {
         const activeOrder = data.find(o => 
-          (o.order_status === 'Pending' || o.order_status === 'Confirmed') && 
+          o.order_stage !== 'completed' && 
           !o.payment_confirmed
         );
         setCurrentOrder((activeOrder as Order) || null);
@@ -97,8 +101,13 @@ export function useOrders() {
     };
   }, [user, currentOrder?.id]);
 
-  const createOrder = async (orderData: Omit<OrderInsert, 'user_id'> & { order_type?: 'dine-in' | 'parcel' }) => {
+  const createOrder = async (orderData: Omit<OrderInsert, 'user_id'> & { 
+    order_type?: 'dine-in' | 'parcel';
+    seats?: string[];
+  }) => {
     if (!user) throw new Error('User not authenticated');
+
+    const baseItems = orderData.ordered_items || [];
 
     const { data, error } = await supabase
       .from('orders')
@@ -106,6 +115,10 @@ export function useOrders() {
         ...orderData,
         user_id: user.id,
         order_type: orderData.order_type || 'dine-in',
+        seats: orderData.seats || [],
+        order_stage: 'cart',
+        base_items: baseItems,
+        extra_items: [],
       } as any)
       .select()
       .single();
@@ -128,6 +141,7 @@ export function useOrders() {
     if (fetchError) throw fetchError;
 
     const existingItems = (currentOrderData.ordered_items as any[]) || [];
+    const existingExtra = ((currentOrderData as any).extra_items as any[]) || [];
     
     // Merge items - add quantities if same item exists
     const mergedItems = [...existingItems];
@@ -140,14 +154,21 @@ export function useOrders() {
       }
     });
 
+    // Track extra items with timestamp for manager visibility
+    const extraItemsWithTime = newItems.map(item => ({
+      ...item,
+      addedAt: new Date().toISOString(),
+    }));
+
     const newTotal = currentOrderData.total_amount + additionalAmount;
 
     const { error } = await supabase
       .from('orders')
       .update({ 
         ordered_items: mergedItems,
-        total_amount: newTotal 
-      })
+        total_amount: newTotal,
+        extra_items: [...existingExtra, ...extraItemsWithTime],
+      } as any)
       .eq('id', orderId);
 
     if (error) throw error;
@@ -157,6 +178,7 @@ export function useOrders() {
     const updateData: any = { 
       order_status: 'Confirmed',
       confirmed_at: new Date().toISOString(),
+      order_stage: 'order_confirmed',
     };
     
     if (waitTimeMinutes !== undefined && waitTimeMinutes > 0) {
@@ -202,7 +224,10 @@ export function useOrders() {
   const markEatingFinished = async (orderId: string) => {
     const { error } = await supabase
       .from('orders')
-      .update({ eating_finished: true })
+      .update({ 
+        eating_finished: true,
+        order_stage: 'finished_eating',
+      } as any)
       .eq('id', orderId);
 
     if (error) throw error;
@@ -214,7 +239,8 @@ export function useOrders() {
       .update({ 
         payment_confirmed: true,
         payment_mode: paymentMode,
-      })
+        order_stage: 'completed',
+      } as any)
       .eq('id', orderId);
 
     if (error) throw error;
@@ -223,7 +249,19 @@ export function useOrders() {
   const updatePaymentIntent = async (orderId: string, intent: 'Cash' | 'UPI') => {
     const { error } = await supabase
       .from('orders')
-      .update({ payment_intent: intent } as any)
+      .update({ 
+        payment_intent: intent,
+        order_stage: 'payment_selected',
+      } as any)
+      .eq('id', orderId);
+
+    if (error) throw error;
+  };
+
+  const updateOrderStage = async (orderId: string, stage: Order['order_stage']) => {
+    const { error } = await supabase
+      .from('orders')
+      .update({ order_stage: stage } as any)
       .eq('id', orderId);
 
     if (error) throw error;
@@ -295,6 +333,7 @@ export function useOrders() {
     markEatingFinished,
     confirmPayment,
     updatePaymentIntent,
+    updateOrderStage,
     deleteDayHistory,
     archiveTodayOrders,
     getTodayStats,

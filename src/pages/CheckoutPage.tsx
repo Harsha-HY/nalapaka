@@ -5,14 +5,14 @@ import { useCart } from '@/contexts/CartContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTableNumber } from '@/hooks/useTableNumber';
 import { useOrders } from '@/hooks/useOrders';
-import { useLockedTables } from '@/hooks/useLockedTables';
+import { useLockedSeats } from '@/hooks/useLockedSeats';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { OrderTypeModal } from '@/components/OrderTypeModal';
-import { TableNumberModal } from '@/components/TableNumberModal';
+import { TableSeatModal } from '@/components/TableSeatModal';
 import { toast } from 'sonner';
 
 export default function CheckoutPage() {
@@ -20,22 +20,21 @@ export default function CheckoutPage() {
   const { t, language } = useLanguage();
   const { tableNumber, saveTableNumber } = useTableNumber();
   const { currentOrder, createOrder, addItemsToOrder } = useOrders();
-  const { isTableLocked, lockTable } = useLockedTables();
+  const { lockSeats } = useLockedSeats();
   const navigate = useNavigate();
 
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOrderTypeModal, setShowOrderTypeModal] = useState(false);
-  const [showTableModal, setShowTableModal] = useState(false);
+  const [showTableSeatModal, setShowTableSeatModal] = useState(false);
   const [selectedOrderType, setSelectedOrderType] = useState<'dine-in' | 'parcel' | null>(null);
   const [pendingOrderData, setPendingOrderData] = useState<any>(null);
 
   // Check if there's an active order to add items to
   const hasActiveOrder = currentOrder && 
-    (currentOrder.order_status === 'Pending' || currentOrder.order_status === 'Confirmed') &&
-    !currentOrder.payment_confirmed &&
-    !currentOrder.eating_finished;
+    currentOrder.order_stage !== 'completed' &&
+    !currentOrder.payment_confirmed;
 
   // Pre-fill customer details from active order
   useEffect(() => {
@@ -103,56 +102,35 @@ export default function CheckoutPage() {
 
     if (orderType === 'parcel') {
       // For parcel, proceed directly without table number
-      await createOrderWithType('parcel', 'PARCEL');
+      await createOrderWithType('parcel', 'PARCEL', []);
     } else {
-      // For dine-in, ask for table number
-      if (tableNumber) {
-        // Already have a table number, check if it's locked
-        if (isTableLocked(tableNumber)) {
-          setShowTableModal(true);
-        } else {
-          await createOrderWithType('dine-in', tableNumber);
-        }
-      } else {
-        setShowTableModal(true);
-      }
+      // For dine-in, ask for table number and seats
+      setShowTableSeatModal(true);
     }
   };
 
-  const handleTableNumberSave = async (table: string) => {
-    setShowTableModal(false);
+  const handleTableSeatSave = async (table: string, seats: string[]) => {
+    setShowTableSeatModal(false);
     saveTableNumber(table);
-    await createOrderWithType('dine-in', table);
+    await createOrderWithType('dine-in', table, seats);
   };
 
-  const createOrderWithType = async (orderType: 'dine-in' | 'parcel', table: string) => {
+  const createOrderWithType = async (orderType: 'dine-in' | 'parcel', table: string, seats: string[]) => {
     setIsSubmitting(true);
 
     try {
-      // For dine-in, check table lock again
-      if (orderType === 'dine-in' && table !== 'PARCEL') {
-        if (isTableLocked(table)) {
-          toast.error(
-            language === 'kn' 
-              ? 'ಈ ಟೇಬಲ್ ತುಂಬಿದೆ. ದಯವಿಟ್ಟು ಹೋಟೆಲ್ ನಿರ್ವಹಣೆಯನ್ನು ಸಂಪರ್ಕಿಸಿ.' 
-              : 'This table is filled. Please contact hotel management.'
-          );
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
       const orderData = {
         ...pendingOrderData,
         order_type: orderType,
         table_number: table,
+        seats: seats,
       };
 
       const newOrder = await createOrder(orderData);
 
-      // Lock table for dine-in orders
-      if (orderType === 'dine-in' && table !== 'PARCEL' && newOrder) {
-        await lockTable(table, newOrder.id);
+      // Lock seats for dine-in orders
+      if (orderType === 'dine-in' && table !== 'PARCEL' && newOrder && seats.length > 0) {
+        await lockSeats(table, seats, newOrder.id);
       }
 
       toast.success(language === 'kn' ? 'ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!' : 'Order placed successfully!');
@@ -197,7 +175,7 @@ export default function CheckoutPage() {
                 <p>
                   {(currentOrder as any).order_type === 'parcel' 
                     ? 'PARCEL' 
-                    : `${language === 'kn' ? 'ಟೇಬಲ್' : 'Table'} ${currentOrder.table_number}`
+                    : `${language === 'kn' ? 'ಟೇಬಲ್' : 'Table'} ${currentOrder.table_number}${(currentOrder as any).seats?.length ? ` | Seats: ${(currentOrder as any).seats.join(', ')}` : ''}`
                   } • {currentOrder.customer_name}
                 </p>
                 <p>{language === 'kn' ? 'ಪ್ರಸ್ತುತ ಒಟ್ಟು' : 'Current total'}: ₹{currentOrder.total_amount}</p>
@@ -309,11 +287,11 @@ export default function CheckoutPage() {
         onSelect={handleOrderTypeSelect}
       />
 
-      {/* Table Number Modal for Dine-in */}
-      <TableNumberModal
-        open={showTableModal}
-        onSave={handleTableNumberSave}
-        onClose={() => setShowTableModal(false)}
+      {/* Table and Seat Selection Modal for Dine-in */}
+      <TableSeatModal
+        open={showTableSeatModal}
+        onSave={handleTableSeatSave}
+        onClose={() => setShowTableSeatModal(false)}
         showCloseButton={true}
       />
     </div>

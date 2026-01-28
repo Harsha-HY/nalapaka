@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Clock, 
@@ -9,11 +9,9 @@ import {
   Plus,
   UtensilsCrossed,
   History,
-  LogOut,
   Package
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { useOrders, Order } from '@/hooks/useOrders';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,42 +24,10 @@ import { toast } from 'sonner';
 
 export default function OrderStatusPage() {
   const { t, language } = useLanguage();
-  const { signOut } = useAuth();
   const { currentOrder, markEatingFinished, updatePaymentIntent } = useOrders();
   const navigate = useNavigate();
-  const [autoLogoutCountdown, setAutoLogoutCountdown] = useState<number | null>(null);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [showUPIModal, setShowUPIModal] = useState(false);
-
-  // Auto logout after payment confirmed
-  const handleAutoLogout = useCallback(async () => {
-    try {
-      await signOut();
-      navigate('/');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  }, [signOut, navigate]);
-
-  useEffect(() => {
-    if (currentOrder?.payment_confirmed && autoLogoutCountdown === null) {
-      setAutoLogoutCountdown(15);
-    }
-  }, [currentOrder?.payment_confirmed, autoLogoutCountdown]);
-
-  useEffect(() => {
-    if (autoLogoutCountdown === null) return;
-    if (autoLogoutCountdown <= 0) {
-      handleAutoLogout();
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setAutoLogoutCountdown(prev => prev !== null ? prev - 1 : null);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [autoLogoutCountdown, handleAutoLogout]);
 
   if (!currentOrder) {
     return (
@@ -82,6 +48,7 @@ export default function OrderStatusPage() {
   const paymentConfirmed = currentOrder.payment_confirmed;
   const paymentIntent = (currentOrder as any).payment_intent;
   const orderType = (currentOrder as Order).order_type || 'dine-in';
+  const seats = (currentOrder as any).seats || [];
   const waitTimeMinutes = (currentOrder as Order).wait_time_minutes;
   const confirmedAt = (currentOrder as Order).confirmed_at;
 
@@ -160,13 +127,6 @@ export default function OrderStatusPage() {
                 ? (language === 'kn' ? '(ನಗದು)' : '(Cash)') 
                 : (language === 'kn' ? '(UPI)' : '(UPI)')}
             </p>
-            {autoLogoutCountdown !== null && (
-              <p className="text-sm mt-2">
-                {language === 'kn' 
-                  ? `${autoLogoutCountdown} ಸೆಕೆಂಡುಗಳಲ್ಲಿ ಲಾಗ್ಔಟ್ ಆಗುತ್ತಿದ್ದೀರಿ...` 
-                  : `Logging out in ${autoLogoutCountdown} seconds...`}
-              </p>
-            )}
           </>
         ) : isCancelled ? (
           <>
@@ -211,10 +171,18 @@ export default function OrderStatusPage() {
           <CardContent>
             <div className="space-y-2">
               {orderType === 'dine-in' && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{t('tableNumber')}</span>
-                  <span className="font-medium">{currentOrder.table_number}</span>
-                </div>
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{t('tableNumber')}</span>
+                    <span className="font-medium">{currentOrder.table_number}</span>
+                  </div>
+                  {seats.length > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{language === 'kn' ? 'ಆಸನಗಳು' : 'Seats'}</span>
+                      <span className="font-medium">{seats.join(', ')}</span>
+                    </div>
+                  )}
+                </>
               )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('customerName')}</span>
@@ -313,7 +281,7 @@ export default function OrderStatusPage() {
           </Card>
         )}
 
-        {/* Payment confirmed */}
+        {/* Payment confirmed - NO LOGOUT BUTTON */}
         {paymentConfirmed && (
           <Card className="border-green-500">
             <CardContent className="py-6 text-center">
@@ -324,41 +292,29 @@ export default function OrderStatusPage() {
               <p className="text-sm text-muted-foreground mt-2">
                 {language === 'kn' ? 'ನಮ್ಮೊಂದಿಗೆ ಊಟ ಮಾಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು!' : 'Thank you for dining with us!'}
               </p>
-              <Button 
-                className="mt-4" 
-                variant="outline"
-                onClick={handleAutoLogout}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                {language === 'kn' ? 'ಈಗ ಲಾಗ್ಔಟ್' : 'Logout Now'}
-              </Button>
             </CardContent>
           </Card>
         )}
 
-        {/* Order History Button */}
-        {!paymentConfirmed && (
-          <Button
-            variant="outline"
-            className="w-full h-12"
-            onClick={() => navigate('/order-history')}
-          >
-            <History className="h-4 w-4 mr-2" />
-            {language === 'kn' ? 'ಆರ್ಡರ್ ಇತಿಹಾಸ' : 'Order History'}
-          </Button>
-        )}
+        {/* Order History Button - Always visible */}
+        <Button
+          variant="outline"
+          className="w-full h-12"
+          onClick={() => navigate('/order-history')}
+        >
+          <History className="h-4 w-4 mr-2" />
+          {language === 'kn' ? 'ಆರ್ಡರ್ ಇತಿಹಾಸ' : 'Order History'}
+        </Button>
 
-        {/* Back to menu - only when not payment confirmed */}
-        {!paymentConfirmed && (
-          <Button
-            variant="outline"
-            className="w-full h-12"
-            onClick={() => navigate('/menu')}
-          >
-            <Home className="h-4 w-4 mr-2" />
-            {t('menu')}
-          </Button>
-        )}
+        {/* Back to menu */}
+        <Button
+          variant="outline"
+          className="w-full h-12"
+          onClick={() => navigate('/menu')}
+        >
+          <Home className="h-4 w-4 mr-2" />
+          {t('menu')}
+        </Button>
       </main>
 
       {/* Payment Options Modal */}
