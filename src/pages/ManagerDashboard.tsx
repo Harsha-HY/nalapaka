@@ -33,9 +33,10 @@ import { WaitTimeSelector } from '@/components/WaitTimeSelector';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { ManagerHistorySection } from '@/components/ManagerHistorySection';
 import { OrderExtraItemsBadge } from '@/components/OrderExtraItemsBadge';
+import { FoodSalesSummary } from '@/components/FoodSalesSummary';
 import { printKitchenSlip, printBill } from '@/components/KitchenSlipPrint';
 import { toast } from 'sonner';
-
+import { BarChart3 } from 'lucide-react';
 export default function ManagerDashboard() {
   const { language } = useLanguage();
   const { isManager, signOut } = useAuth();
@@ -55,7 +56,7 @@ export default function ManagerDashboard() {
   const { unlockSeatsByOrderId } = useLockedSeats();
   const navigate = useNavigate();
   
-  const [activeSection, setActiveSection] = useState<'orders' | 'menu' | 'history'>('orders');
+  const [activeSection, setActiveSection] = useState<'orders' | 'menu' | 'history' | 'sales'>('orders');
   const [waitTimeOrderId, setWaitTimeOrderId] = useState<string | null>(null);
 
   // Redirect non-managers
@@ -192,24 +193,7 @@ export default function ManagerDashboard() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Left Sidebar - History */}
-      <aside className="w-96 border-r bg-muted/30 hidden lg:flex flex-col">
-        <div className="p-4 border-b">
-          <h2 className="font-bold text-lg flex items-center gap-2">
-            <History className="h-5 w-5" />
-            Order History (Day-wise)
-          </h2>
-        </div>
-        <div className="flex-1 overflow-auto p-4">
-          <ManagerHistorySection 
-            orders={orders} 
-            onDeleteDayHistory={handleDeleteDayHistory}
-            onMoveToHistory={handleMoveToHistory}
-          />
-        </div>
-      </aside>
-
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
@@ -251,7 +235,7 @@ export default function ManagerDashboard() {
           </div>
 
           {/* Navigation Tabs */}
-          <div className="px-4 pb-2 flex gap-2">
+          <div className="px-4 pb-2 flex flex-wrap gap-2">
             <Button 
               variant={activeSection === 'orders' ? 'default' : 'outline'} 
               size="sm"
@@ -271,10 +255,17 @@ export default function ManagerDashboard() {
               variant={activeSection === 'history' ? 'default' : 'outline'} 
               size="sm"
               onClick={() => setActiveSection('history')}
-              className="lg:hidden"
             >
               <History className="h-4 w-4 mr-1" />
               History
+            </Button>
+            <Button 
+              variant={activeSection === 'sales' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('sales')}
+            >
+              <BarChart3 className="h-4 w-4 mr-1" />
+              Food Sales
             </Button>
           </div>
         </header>
@@ -377,14 +368,21 @@ export default function ManagerDashboard() {
             </div>
           )}
 
-          {/* History Section (Mobile) */}
+          {/* History Section */}
           {activeSection === 'history' && (
-            <div className="lg:hidden">
+            <div>
               <ManagerHistorySection 
                 orders={orders} 
                 onDeleteDayHistory={handleDeleteDayHistory}
                 onMoveToHistory={handleMoveToHistory}
               />
+            </div>
+          )}
+
+          {/* Food Sales Summary Section */}
+          {activeSection === 'sales' && (
+            <div>
+              <FoodSalesSummary orders={orders} />
             </div>
           )}
         </main>
