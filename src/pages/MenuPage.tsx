@@ -1,11 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, LogOut, History } from 'lucide-react';
+import { Search, LogOut, History, UtensilsCrossed } from 'lucide-react';
 import { useMenuItems, MenuItem } from '@/hooks/useMenuItems';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/hooks/useOrders';
-import { useCart } from '@/contexts/CartContext';
 import { useSessionResume } from '@/hooks/useSessionResume';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { FloatingCart } from '@/components/FloatingCart';
@@ -46,19 +45,16 @@ export default function MenuPage() {
   // Filter menu items
   const filteredItems = useMemo(() => {
     return menuItems.filter((item) => {
-      // Search filter
       const searchMatch =
         searchQuery === '' ||
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.nameKn.includes(searchQuery);
 
-      // Time slot filter
       const timeSlotMatch =
         selectedTimeSlot === 'all' ||
         item.timeSlot === 'all' ||
         item.timeSlot === selectedTimeSlot;
 
-      // Category filter
       const categoryMatch =
         selectedCategory === 'all' || item.category === selectedCategory;
 
@@ -105,19 +101,25 @@ export default function MenuPage() {
       <OrderStatusBanner />
 
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background border-b">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b">
         <div className="container py-4">
+          {/* Top bar */}
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-primary">Nalapaka</h1>
-              <p className="text-sm text-muted-foreground">Nanjangud</p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <UtensilsCrossed className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-foreground">Nalapaka</h1>
+                <p className="text-xs text-muted-foreground">Nanjangud</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/order-history')}>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/order-history')} className="text-muted-foreground hover:text-foreground">
                 <History className="h-5 w-5" />
               </Button>
               <LanguageToggle />
-              <Button variant="ghost" size="icon" onClick={handleLogout}>
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
                 <LogOut className="h-5 w-5" />
               </Button>
             </div>
@@ -125,60 +127,62 @@ export default function MenuPage() {
 
           {/* Search bar */}
           <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder={t('searchItems')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12 text-base"
+              className="pl-10 h-11 bg-secondary/50 border-0 focus-visible:ring-1 focus-visible:ring-primary"
             />
           </div>
 
           {/* Time slot tabs */}
-          <Tabs value={selectedTimeSlot} onValueChange={(v) => setSelectedTimeSlot(v as TimeSlot)}>
-            <TabsList className="w-full h-auto flex-wrap">
-              <TabsTrigger value="all" className="flex-1">{t('all')}</TabsTrigger>
-              <TabsTrigger value="morning" className="flex-1">{t('morning')}</TabsTrigger>
-              <TabsTrigger value="afternoon" className="flex-1">{t('afternoon')}</TabsTrigger>
-              <TabsTrigger value="evening" className="flex-1">{t('evening')}</TabsTrigger>
-              <TabsTrigger value="night" className="flex-1">{t('night')}</TabsTrigger>
+          <Tabs value={selectedTimeSlot} onValueChange={(v) => setSelectedTimeSlot(v as TimeSlot)} className="mb-2">
+            <TabsList className="w-full h-auto p-1 bg-secondary/50">
+              <TabsTrigger value="all" className="flex-1 text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">{t('all')}</TabsTrigger>
+              <TabsTrigger value="morning" className="flex-1 text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">{t('morning')}</TabsTrigger>
+              <TabsTrigger value="afternoon" className="flex-1 text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">{t('afternoon')}</TabsTrigger>
+              <TabsTrigger value="evening" className="flex-1 text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">{t('evening')}</TabsTrigger>
+              <TabsTrigger value="night" className="flex-1 text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">{t('night')}</TabsTrigger>
             </TabsList>
           </Tabs>
 
           {/* Category tabs */}
-          <Tabs
-            value={selectedCategory}
-            onValueChange={(v) => setSelectedCategory(v as Category)}
-            className="mt-2"
-          >
-            <TabsList className="w-full h-auto flex-wrap">
-              <TabsTrigger value="all" className="flex-1">{t('all')}</TabsTrigger>
-              <TabsTrigger value="south-indian" className="flex-1">{t('southIndian')}</TabsTrigger>
-              <TabsTrigger value="north-indian" className="flex-1">{t('northIndian')}</TabsTrigger>
-              <TabsTrigger value="chinese" className="flex-1">{t('chinese')}</TabsTrigger>
-              <TabsTrigger value="tandoor" className="flex-1">{t('tandoor')}</TabsTrigger>
+          <Tabs value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as Category)}>
+            <TabsList className="w-full h-auto p-1 bg-secondary/50">
+              <TabsTrigger value="all" className="flex-1 text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">{t('all')}</TabsTrigger>
+              <TabsTrigger value="south-indian" className="flex-1 text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">{t('southIndian')}</TabsTrigger>
+              <TabsTrigger value="north-indian" className="flex-1 text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">{t('northIndian')}</TabsTrigger>
+              <TabsTrigger value="chinese" className="flex-1 text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">{t('chinese')}</TabsTrigger>
+              <TabsTrigger value="tandoor" className="flex-1 text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">{t('tandoor')}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
       </header>
 
       {/* Menu items */}
-      <main className="flex-1 container py-6 pb-24">
+      <main className="flex-1 container py-6 pb-28">
         {isMenuLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-20 w-full" />
+              <Skeleton key={i} className="h-20 w-full rounded-lg" />
             ))}
           </div>
         ) : Object.keys(groupedItems).length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {language === 'kn' ? 'ಯಾವುದೇ ಐಟಂಗಳು ಕಂಡುಬಂದಿಲ್ಲ' : 'No items found'}
+          <div className="text-center py-16">
+            <UtensilsCrossed className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">
+              {language === 'kn' ? 'ಯಾವುದೇ ಐಟಂಗಳು ಕಂಡುಬಂದಿಲ್ಲ' : 'No items found'}
+            </p>
           </div>
         ) : (
           Object.entries(groupedItems).map(([category, items]) => (
-            <section key={category} className="mb-8">
-              <h2 className="text-xl font-semibold mb-4 text-foreground">
+            <section key={category} className="mb-8 animate-fade-in">
+              <h2 className="section-header mb-4 px-1">
                 {getCategoryLabel(category, language)}
+                <span className="text-sm font-normal text-muted-foreground">
+                  ({items.length})
+                </span>
               </h2>
               <div className="grid gap-3">
                 {items.map((item) => (

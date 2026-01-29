@@ -16,21 +16,21 @@ export function FloatingCart({ hasActiveOrder }: FloatingCartProps) {
   // Show order status button if there's an active order
   if (hasActiveOrder) {
     return (
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 animate-slide-up">
         {totalItems > 0 && (
           <Button
             onClick={() => navigate('/cart')}
-            className="h-16 rounded-full px-6 shadow-lg bg-primary hover:bg-primary/90"
+            className="h-14 rounded-full px-5 shadow-elevated bg-primary hover:bg-primary/90"
           >
             <div className="flex items-center gap-3">
               <div className="relative">
-                <ShoppingCart className="h-6 w-6" />
-                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
+                <ShoppingCart className="h-5 w-5" />
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
                   {totalItems}
                 </span>
               </div>
               <div className="flex flex-col items-start">
-                <span className="text-xs opacity-80">{totalItems} {t('items')}</span>
+                <span className="text-xs opacity-90">{totalItems} {t('items')}</span>
                 <span className="text-sm font-bold">₹{totalAmount}</span>
               </div>
             </div>
@@ -39,9 +39,9 @@ export function FloatingCart({ hasActiveOrder }: FloatingCartProps) {
         <Button
           onClick={() => navigate('/order-status')}
           variant="secondary"
-          className="h-14 rounded-full px-6 shadow-lg"
+          className="h-12 rounded-full px-5 shadow-soft border border-border"
         >
-          <ClipboardList className="h-5 w-5 mr-2" />
+          <ClipboardList className="h-4 w-4 mr-2" />
           {language === 'kn' ? 'ನನ್ನ ಆರ್ಡರ್' : 'My Order'}
         </Button>
       </div>
@@ -53,17 +53,17 @@ export function FloatingCart({ hasActiveOrder }: FloatingCartProps) {
   return (
     <Button
       onClick={() => navigate('/cart')}
-      className="fixed bottom-6 right-6 z-50 h-16 rounded-full px-6 shadow-lg bg-primary hover:bg-primary/90"
+      className="fab h-14 rounded-full px-6 shadow-elevated bg-primary hover:bg-primary/90 animate-slide-up"
     >
       <div className="flex items-center gap-3">
         <div className="relative">
-          <ShoppingCart className="h-6 w-6" />
-          <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
+          <ShoppingCart className="h-5 w-5" />
+          <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
             {totalItems}
           </span>
         </div>
         <div className="flex flex-col items-start">
-          <span className="text-xs opacity-80">{totalItems} {t('items')}</span>
+          <span className="text-xs opacity-90">{totalItems} {t('items')}</span>
           <span className="text-sm font-bold">₹{totalAmount}</span>
         </div>
       </div>

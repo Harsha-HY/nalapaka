@@ -197,15 +197,23 @@ export default function ManagerDashboard() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-background border-b">
+        <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b">
           <div className="p-4 flex items-center justify-between">
-            <h1 className="text-xl font-bold">Manager Dashboard</h1>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <UtensilsCrossed className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-foreground">Manager Dashboard</h1>
+                <p className="text-xs text-muted-foreground">Nalapaka Nanjangud</p>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={refreshOrders} disabled={isLoading}>
+              <Button variant="outline" size="sm" onClick={refreshOrders} disabled={isLoading} className="shadow-sm">
                 <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
                 <LogOut className="h-4 w-4 mr-1" />
                 Logout
               </Button>
@@ -213,41 +221,52 @@ export default function ManagerDashboard() {
           </div>
           
           {/* Summary Stats */}
-          <div className="px-4 pb-4 flex gap-4">
-            <Card className="flex-1">
-              <CardContent className="p-3 flex items-center justify-between">
+          <div className="px-4 pb-4 grid grid-cols-2 gap-3">
+            <Card className="shadow-soft border-0 bg-card">
+              <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">Today's Orders</p>
-                  <p className="text-2xl font-bold">{totalOrders}</p>
+                  <p className="text-xs text-muted-foreground font-medium">Today's Orders</p>
+                  <p className="text-3xl font-bold text-foreground">{totalOrders}</p>
                 </div>
-                <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <UtensilsCrossed className="h-6 w-6 text-primary" />
+                </div>
               </CardContent>
             </Card>
-            <Card className="flex-1">
-              <CardContent className="p-3 flex items-center justify-between">
+            <Card className="shadow-soft border-0 bg-card">
+              <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">Today's Revenue</p>
-                  <p className="text-2xl font-bold">₹{totalRevenue}</p>
+                  <p className="text-xs text-muted-foreground font-medium">Today's Revenue</p>
+                  <p className="text-3xl font-bold text-success">₹{totalRevenue}</p>
                 </div>
-                <DollarSign className="h-8 w-8 text-muted-foreground" />
+                <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-success" />
+                </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Navigation Tabs */}
-          <div className="px-4 pb-2 flex flex-wrap gap-2">
+          <div className="px-4 pb-3 flex flex-wrap gap-2">
             <Button 
               variant={activeSection === 'orders' ? 'default' : 'outline'} 
               size="sm"
               onClick={() => setActiveSection('orders')}
+              className={activeSection === 'orders' ? 'shadow-sm' : ''}
             >
               <UtensilsCrossed className="h-4 w-4 mr-1" />
-              Orders ({pendingOrders.length})
+              Orders
+              {pendingOrders.length > 0 && (
+                <span className="ml-1 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
+                  {pendingOrders.length}
+                </span>
+              )}
             </Button>
             <Button 
               variant={activeSection === 'menu' ? 'default' : 'outline'} 
               size="sm"
               onClick={() => setActiveSection('menu')}
+              className={activeSection === 'menu' ? 'shadow-sm' : ''}
             >
               Menu Control
             </Button>
@@ -255,6 +274,7 @@ export default function ManagerDashboard() {
               variant={activeSection === 'history' ? 'default' : 'outline'} 
               size="sm"
               onClick={() => setActiveSection('history')}
+              className={activeSection === 'history' ? 'shadow-sm' : ''}
             >
               <History className="h-4 w-4 mr-1" />
               History
@@ -263,6 +283,7 @@ export default function ManagerDashboard() {
               variant={activeSection === 'sales' ? 'default' : 'outline'} 
               size="sm"
               onClick={() => setActiveSection('sales')}
+              className={activeSection === 'sales' ? 'shadow-sm' : ''}
             >
               <BarChart3 className="h-4 w-4 mr-1" />
               Food Sales
@@ -449,26 +470,27 @@ function PendingOrderCard({
   };
 
   return (
-    <Card className={`${isPending ? 'border-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/10' : 'border-blue-400 bg-blue-50/50 dark:bg-blue-900/10'}`}>
+    <Card className={`shadow-soft border-0 ${isPending ? 'order-card-pending' : 'order-card-confirmed'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
             {orderType === 'parcel' ? (
-              <Badge variant="secondary"><Package className="h-3 w-3 mr-1" />PARCEL</Badge>
+              <Badge variant="secondary" className="w-fit"><Package className="h-3 w-3 mr-1" />PARCEL</Badge>
             ) : (
               <>
-                <CardTitle className="text-lg">Table {order.table_number}</CardTitle>
+                <CardTitle className="text-lg font-bold">Table {order.table_number}</CardTitle>
                 {seats.length > 0 && (
-                  <Badge variant="outline" className="text-xs">Seats: {seats.join(', ')}</Badge>
+                  <Badge variant="outline" className="text-xs w-fit bg-card">Seats: {seats.join(', ')}</Badge>
                 )}
               </>
             )}
           </div>
-          <div className="flex items-center gap-1">
-            <Badge variant={isPending ? 'secondary' : 'default'}>
-              {isPending ? 'PENDING' : 'CONFIRMED'}
-            </Badge>
-          </div>
+          <Badge 
+            variant={isPending ? 'secondary' : 'default'}
+            className={isPending ? 'bg-warning/15 text-warning border-warning/30' : 'bg-primary/15 text-primary border-primary/30'}
+          >
+            {isPending ? 'PENDING' : 'CONFIRMED'}
+          </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -609,22 +631,22 @@ function CompletedOrderCard({ order, language, onPrint }: CompletedOrderCardProp
   const seats = (order as any).seats || [];
 
   return (
-    <Card className="border-green-300 bg-green-50/50 dark:bg-green-900/10">
+    <Card className="shadow-soft border-0 order-card-completed">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
             {orderType === 'parcel' ? (
-              <Badge variant="secondary"><Package className="h-3 w-3 mr-1" />PARCEL</Badge>
+              <Badge variant="secondary" className="w-fit"><Package className="h-3 w-3 mr-1" />PARCEL</Badge>
             ) : (
               <>
-                <CardTitle className="text-lg">Table {order.table_number}</CardTitle>
+                <CardTitle className="text-lg font-bold">Table {order.table_number}</CardTitle>
                 {seats.length > 0 && (
-                  <Badge variant="outline" className="text-xs">Seats: {seats.join(', ')}</Badge>
+                  <Badge variant="outline" className="text-xs w-fit bg-card">Seats: {seats.join(', ')}</Badge>
                 )}
               </>
             )}
           </div>
-          <Badge className="bg-green-600">
+          <Badge className="bg-success text-success-foreground">
             <CheckCircle className="h-3 w-3 mr-1" />
             PAID ({order.payment_mode})
           </Badge>
