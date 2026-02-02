@@ -2,10 +2,14 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 
+type UserRole = 'manager' | 'server' | 'customer';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isManager: boolean;
+  isServer: boolean;
+  role: UserRole | null;
   isLoading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -17,8 +21,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isManager, setIsManager] = useState(false);
+  const [role, setRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const isManager = role === 'manager';
+  const isServer = role === 'server';
 
   useEffect(() => {
     // Set up auth state listener BEFORE checking session
@@ -35,10 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('user_id', session.user.id)
             .single();
           
-          setIsManager(data?.role === 'manager');
+          setRole((data?.role as UserRole) || 'customer');
         }, 0);
       } else {
-        setIsManager(false);
+        setRole(null);
       }
       
       setIsLoading(false);
@@ -56,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq('user_id', session.user.id)
           .single()
           .then(({ data }) => {
-            setIsManager(data?.role === 'manager');
+            setRole((data?.role as UserRole) || 'customer');
             setIsLoading(false);
           });
       } else {
@@ -90,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
-    setIsManager(false);
+    setRole(null);
   };
 
   return (
@@ -99,6 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         session,
         isManager,
+        isServer,
+        role,
         isLoading,
         signUp,
         signIn,

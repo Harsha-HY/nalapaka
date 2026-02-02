@@ -18,7 +18,11 @@ import {
   RotateCcw,
   Package,
   LogOut,
-  AlertCircle
+  AlertCircle,
+  Users,
+  MessageSquare,
+  BarChart3,
+  QrCode
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,9 +38,16 @@ import { CountdownTimer } from '@/components/CountdownTimer';
 import { ManagerHistorySection } from '@/components/ManagerHistorySection';
 import { OrderExtraItemsBadge } from '@/components/OrderExtraItemsBadge';
 import { FoodSalesSummary } from '@/components/FoodSalesSummary';
+import { AccountHandlingSection } from '@/components/AccountHandlingSection';
+import { ReviewsSection } from '@/components/ReviewsSection';
+import { AnalyticsSection } from '@/components/AnalyticsSection';
+import { QRCodePayment } from '@/components/QRCodePayment';
 import { printKitchenSlip, printBill } from '@/components/KitchenSlipPrint';
 import { toast } from 'sonner';
-import { BarChart3 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+type DashboardSection = 'orders' | 'menu' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics';
+
 export default function ManagerDashboard() {
   const { language } = useLanguage();
   const { isManager, signOut } = useAuth();
@@ -53,10 +64,10 @@ export default function ManagerDashboard() {
     archiveTodayOrders
   } = useOrders();
   const { menuItems, toggleAvailability } = useMenuItems();
-  const { unlockSeatsByOrderId } = useLockedSeats();
+  const { unlockSeatsByOrderId, resetAllSeats } = useLockedSeats();
   const navigate = useNavigate();
   
-  const [activeSection, setActiveSection] = useState<'orders' | 'menu' | 'history' | 'sales'>('orders');
+  const [activeSection, setActiveSection] = useState<DashboardSection>('orders');
   const [waitTimeOrderId, setWaitTimeOrderId] = useState<string | null>(null);
 
   // Redirect non-managers
@@ -136,6 +147,17 @@ export default function ManagerDashboard() {
       toast.success('Seats have been reset');
     } catch (error) {
       toast.error('Failed to reset seats');
+    }
+  };
+
+  const handleResetAllTables = async () => {
+    if (!confirm('Are you sure you want to reset ALL tables? This will unlock all seats.')) return;
+    
+    try {
+      await resetAllSeats();
+      toast.success('All tables have been reset');
+    } catch (error) {
+      toast.error('Failed to reset tables');
     }
   };
 
@@ -288,6 +310,46 @@ export default function ManagerDashboard() {
               <BarChart3 className="h-4 w-4 mr-1" />
               Food Sales
             </Button>
+            <Button 
+              variant={activeSection === 'accounts' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('accounts')}
+              className={activeSection === 'accounts' ? 'shadow-sm' : ''}
+            >
+              <Users className="h-4 w-4 mr-1" />
+              Accounts
+            </Button>
+            <Button 
+              variant={activeSection === 'reviews' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('reviews')}
+              className={activeSection === 'reviews' ? 'shadow-sm' : ''}
+            >
+              <MessageSquare className="h-4 w-4 mr-1" />
+              Reviews
+            </Button>
+            <Button 
+              variant={activeSection === 'analytics' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('analytics')}
+              className={activeSection === 'analytics' ? 'shadow-sm' : ''}
+            >
+              <BarChart3 className="h-4 w-4 mr-1" />
+              Analytics
+            </Button>
+          </div>
+
+          {/* Reset All Tables Button */}
+          <div className="px-4 pb-3">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleResetAllTables}
+              className="text-destructive border-destructive/30 hover:bg-destructive/10"
+            >
+              <RotateCcw className="h-4 w-4 mr-1" />
+              Reset All Tables
+            </Button>
           </div>
         </header>
 
@@ -298,7 +360,7 @@ export default function ManagerDashboard() {
               {/* Pending Orders */}
               <div>
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-yellow-600" />
+                  <Clock className="h-5 w-5 text-warning" />
                   Pending Orders ({pendingOrders.length})
                 </h2>
                 {pendingOrders.length === 0 ? (
@@ -330,7 +392,7 @@ export default function ManagerDashboard() {
               {completedOrders.length > 0 && (
                 <div className="mt-8">
                   <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <CheckCircle className="h-5 w-5 text-success" />
                     Completed Orders Today ({completedOrders.length})
                   </h2>
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -404,6 +466,27 @@ export default function ManagerDashboard() {
           {activeSection === 'sales' && (
             <div>
               <FoodSalesSummary orders={orders} />
+            </div>
+          )}
+
+          {/* Account Handling Section */}
+          {activeSection === 'accounts' && (
+            <div>
+              <AccountHandlingSection />
+            </div>
+          )}
+
+          {/* Reviews Section */}
+          {activeSection === 'reviews' && (
+            <div>
+              <ReviewsSection />
+            </div>
+          )}
+
+          {/* Analytics Section */}
+          {activeSection === 'analytics' && (
+            <div>
+              <AnalyticsSection orders={orders} />
             </div>
           )}
         </main>
@@ -527,13 +610,18 @@ function PendingOrderCard({
         {/* Payment Intent - Show when customer has selected payment method */}
         {eatingFinished && paymentIntent && (
           <div className={`py-2 px-3 rounded-md flex items-center gap-2 ${
-            paymentIntent === 'Cash' ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-blue-100 dark:bg-blue-900/30'
+            paymentIntent === 'Cash' ? 'bg-warning/20' : 'bg-primary/20'
           }`}>
             <AlertCircle className="h-4 w-4" />
             <span className="text-sm font-medium">
               Customer {order.customer_name} paying through {paymentIntent}
             </span>
           </div>
+        )}
+
+        {/* QR Code for UPI Payment */}
+        {eatingFinished && paymentIntent === 'UPI' && (
+          <QRCodePayment amount={order.total_amount} orderId={order.id} size={120} />
         )}
 
         {/* Timer */}

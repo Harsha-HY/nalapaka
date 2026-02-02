@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Clock, 
@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { PaymentOptionsModal } from '@/components/PaymentOptionsModal';
 import { UPIPaymentModal } from '@/components/UPIPaymentModal';
+import { CustomerReviewModal } from '@/components/CustomerReviewModal';
 import { toast } from 'sonner';
 
 export default function OrderStatusPage() {
@@ -28,6 +29,19 @@ export default function OrderStatusPage() {
   const navigate = useNavigate();
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [showUPIModal, setShowUPIModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [hasShownReview, setHasShownReview] = useState(false);
+
+  // Show review modal after payment is confirmed
+  useEffect(() => {
+    if (currentOrder?.payment_confirmed && !hasShownReview) {
+      const timer = setTimeout(() => {
+        setShowReviewModal(true);
+        setHasShownReview(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentOrder?.payment_confirmed, hasShownReview]);
 
   if (!currentOrder) {
     return (
@@ -58,6 +72,7 @@ export default function OrderStatusPage() {
   const seats = (currentOrder as any).seats || [];
   const waitTimeMinutes = (currentOrder as Order).wait_time_minutes;
   const confirmedAt = (currentOrder as Order).confirmed_at;
+  const serverName = (currentOrder as any).server_name;
 
   const orderedItems = currentOrder.ordered_items as Array<{
     name: string;
@@ -167,6 +182,18 @@ export default function OrderStatusPage() {
       </div>
 
       <main className="flex-1 container py-6 space-y-4">
+        {/* Server info */}
+        {serverName && (
+          <Card className="shadow-soft border-0 border-l-4 border-l-primary animate-slide-up">
+            <CardContent className="py-3 px-4">
+              <p className="text-sm text-muted-foreground">
+                {language === 'kn' ? 'ನಿಮ್ಮ ಸರ್ವರ್:' : 'Your server:'}{' '}
+                <span className="font-semibold text-foreground">{serverName}</span>
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Order details */}
         <Card className="shadow-soft border-0 animate-slide-up">
           <CardHeader className="pb-2">
@@ -288,7 +315,7 @@ export default function OrderStatusPage() {
                   className="w-full shadow-sm"
                   onClick={() => setShowUPIModal(true)}
                 >
-                  {language === 'kn' ? 'UPI ಅಪ್ಲಿಕೇಶನ್ ತೆರೆಯಿರಿ' : 'Open UPI App'}
+                  {language === 'kn' ? 'QR ಕೋಡ್ ತೋರಿಸಿ' : 'Show QR Code'}
                 </Button>
               )}
             </CardContent>
@@ -347,7 +374,20 @@ export default function OrderStatusPage() {
         open={showUPIModal}
         onClose={() => setShowUPIModal(false)}
         totalAmount={currentOrder.total_amount}
+        orderId={currentOrder.id}
         onPaymentInitiated={handleUPIPaymentInitiated}
+      />
+
+      {/* Customer Review Modal */}
+      <CustomerReviewModal
+        open={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        customerName={currentOrder.customer_name}
+        phoneNumber={currentOrder.phone_number}
+        tableNumber={currentOrder.table_number}
+        seats={seats}
+        serverName={serverName}
+        orderId={currentOrder.id}
       />
     </div>
   );

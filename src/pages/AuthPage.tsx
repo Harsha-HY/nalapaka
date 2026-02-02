@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -19,9 +19,22 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, role, user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+
+  // Redirect based on role when user is authenticated
+  useEffect(() => {
+    if (user && role) {
+      if (role === 'manager') {
+        navigate('/manager');
+      } else if (role === 'server') {
+        navigate('/server');
+      } else {
+        navigate('/menu');
+      }
+    }
+  }, [user, role, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,9 +51,8 @@ export default function AuthPage() {
         const { error } = await signUp(email, password);
         if (error) {
           setError(error.message);
-        } else {
-          navigate('/menu');
         }
+        // Navigation will happen via useEffect when role is set
       } else {
         const { error } = await signIn(email, password);
         if (error) {
@@ -49,9 +61,8 @@ export default function AuthPage() {
           } else {
             setError(error.message);
           }
-        } else {
-          navigate('/menu');
         }
+        // Navigation will happen via useEffect when role is set
       }
     } catch (err) {
       setError('An unexpected error occurred');

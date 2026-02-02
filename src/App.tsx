@@ -13,6 +13,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import OrderStatusPage from "./pages/OrderStatusPage";
 import OrderHistoryPage from "./pages/OrderHistoryPage";
 import ManagerDashboard from "./pages/ManagerDashboard";
+import ServerDashboard from "./pages/ServerDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ const AppRoutes = () => (
     <Route path="/order-status" element={<ProtectedRoute><OrderStatusPage /></ProtectedRoute>} />
     <Route path="/order-history" element={<ProtectedRoute><OrderHistoryPage /></ProtectedRoute>} />
     <Route path="/manager" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
+    <Route path="/server" element={<ProtectedRoute><ServerDashboard /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );

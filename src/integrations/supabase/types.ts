@@ -101,6 +101,8 @@ export type Database = {
           payment_mode: Database["public"]["Enums"]["payment_mode"]
           phone_number: string
           seats: string[] | null
+          server_id: string | null
+          server_name: string | null
           table_number: string
           total_amount: number
           updated_at: string
@@ -125,6 +127,8 @@ export type Database = {
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
           phone_number: string
           seats?: string[] | null
+          server_id?: string | null
+          server_name?: string | null
           table_number: string
           total_amount?: number
           updated_at?: string
@@ -149,11 +153,94 @@ export type Database = {
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
           phone_number?: string
           seats?: string[] | null
+          server_id?: string | null
+          server_name?: string | null
           table_number?: string
           total_amount?: number
           updated_at?: string
           user_id?: string
           wait_time_minutes?: number | null
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          created_at: string
+          customer_name: string
+          food_rating: number | null
+          hotel_rating: number | null
+          id: string
+          order_id: string | null
+          phone_number: string | null
+          review_text: string | null
+          seats: string[] | null
+          server_name: string | null
+          service_rating: number | null
+          table_number: string
+          website_rating: number | null
+        }
+        Insert: {
+          created_at?: string
+          customer_name: string
+          food_rating?: number | null
+          hotel_rating?: number | null
+          id?: string
+          order_id?: string | null
+          phone_number?: string | null
+          review_text?: string | null
+          seats?: string[] | null
+          server_name?: string | null
+          service_rating?: number | null
+          table_number: string
+          website_rating?: number | null
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          food_rating?: number | null
+          hotel_rating?: number | null
+          id?: string
+          order_id?: string | null
+          phone_number?: string | null
+          review_text?: string | null
+          seats?: string[] | null
+          server_name?: string | null
+          service_rating?: number | null
+          table_number?: string
+          website_rating?: number | null
+        }
+        Relationships: []
+      }
+      servers: {
+        Row: {
+          assigned_tables: string[]
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          phone_number: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_tables?: string[]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          phone_number?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_tables?: string[]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone_number?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -183,6 +270,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_server_tables: { Args: never; Returns: string[] }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -191,6 +279,7 @@ export type Database = {
         Returns: boolean
       }
       is_manager: { Args: never; Returns: boolean }
+      is_server: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "manager" | "customer" | "server"
