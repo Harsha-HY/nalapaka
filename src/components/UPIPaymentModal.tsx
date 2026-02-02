@@ -8,23 +8,22 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Smartphone, ExternalLink } from 'lucide-react';
+import { QRCodePayment, generateUPIUri } from '@/components/QRCodePayment';
 
 interface UPIPaymentModalProps {
   open: boolean;
   onClose: () => void;
   totalAmount: number;
+  orderId: string;
   onPaymentInitiated: () => void;
 }
 
-// UPI receiver number (private - not displayed to users)
-const UPI_RECEIVER = '8951525788';
-
-export function UPIPaymentModal({ open, onClose, totalAmount, onPaymentInitiated }: UPIPaymentModalProps) {
+export function UPIPaymentModal({ open, onClose, totalAmount, orderId, onPaymentInitiated }: UPIPaymentModalProps) {
   const { language } = useLanguage();
 
   const handleUPIPayment = () => {
     // Create UPI deep link
-    const upiUrl = `upi://pay?pa=${UPI_RECEIVER}@paytm&pn=Nalapaka&am=${totalAmount}&cu=INR&tn=Food Order Payment`;
+    const upiUrl = generateUPIUri(totalAmount, orderId);
     
     // Try to open UPI app
     window.location.href = upiUrl;
@@ -39,21 +38,25 @@ export function UPIPaymentModal({ open, onClose, totalAmount, onPaymentInitiated
         <DialogHeader>
           <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
             <Smartphone className="h-6 w-6" />
-            {language === 'kn' ? 'UPI ಪಾವತಿ' : 'UPI Payment'}
+            {language === 'kn' ? 'ಆನ್‌ಲೈನ್ ಪಾವತಿ' : 'Pay Online'}
           </DialogTitle>
           <DialogDescription className="text-center">
             {language === 'kn' ? 'ಒಟ್ಟು ಮೊತ್ತ' : 'Total Amount'}: ₹{totalAmount}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
-          <p className="text-center text-muted-foreground">
+          {/* QR Code */}
+          <QRCodePayment amount={totalAmount} orderId={orderId} showCard={false} />
+          
+          <p className="text-center text-muted-foreground text-sm">
             {language === 'kn' 
-              ? 'ನಿಮ್ಮ UPI ಅಪ್ಲಿಕೇಶನ್ ತೆರೆಯಲು ಕ್ಲಿಕ್ ಮಾಡಿ' 
-              : 'Click to open your UPI app'}
+              ? 'ಅಥವಾ ನಿಮ್ಮ UPI ಅಪ್ಲಿಕೇಶನ್ ತೆರೆಯಿರಿ' 
+              : 'Or open your UPI app directly'}
           </p>
           
           <Button
-            className="h-14 text-lg"
+            variant="outline"
+            className="h-12"
             onClick={handleUPIPayment}
           >
             <ExternalLink className="h-5 w-5 mr-2" />
@@ -66,8 +69,8 @@ export function UPIPaymentModal({ open, onClose, totalAmount, onPaymentInitiated
               : 'Use Google Pay, PhonePe, Paytm or any UPI app'}
           </p>
           
-          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-            <p className="text-sm text-center text-yellow-700 dark:text-yellow-300">
+          <div className="p-4 bg-warning/10 rounded-lg">
+            <p className="text-sm text-center text-warning">
               {language === 'kn' 
                 ? 'ಪಾವತಿ ಮಾಡಿದ ನಂತರ, ಮ್ಯಾನೇಜರ್ ದೃಢೀಕರಿಸುತ್ತಾರೆ' 
                 : 'After payment, the manager will confirm'}

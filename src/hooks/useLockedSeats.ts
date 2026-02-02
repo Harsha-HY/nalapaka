@@ -137,6 +137,25 @@ export function useLockedSeats() {
       .map(ls => ls.seat);
   };
 
+  const resetAllSeats = async (): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('locked_seats')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+      
+      if (error) {
+        console.error('Error resetting all seats:', error);
+        return false;
+      }
+      await fetchLockedSeats();
+      return true;
+    } catch (error) {
+      console.error('Error resetting all seats:', error);
+      return false;
+    }
+  };
+
   return {
     lockedSeats,
     isLoading,
@@ -147,6 +166,7 @@ export function useLockedSeats() {
     unlockSeats,
     unlockSeatsByOrderId,
     getSeatsForOrder,
+    resetAllSeats,
     refreshLockedSeats: fetchLockedSeats,
   };
 }
