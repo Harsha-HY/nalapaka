@@ -23,6 +23,18 @@ function getTimeAgo(addedAt: string): string | null {
   return `${diffMins}min ago`;
 }
 
+// Get color for extra item based on order (1st = orange, 2nd = yellow, 3rd = blue, etc.)
+function getExtraItemColor(index: number): string {
+  const colors = [
+    'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 border-orange-300', // 1st - Orange
+    'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 border-yellow-300', // 2nd - Yellow
+    'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border-blue-300', // 3rd - Blue
+    'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 border-purple-300', // 4th - Purple
+    'bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-200 border-pink-300', // 5th - Pink
+  ];
+  return colors[index % colors.length];
+}
+
 export function OrderExtraItemsBadge({ extraItems }: OrderExtraItemsBadgeProps) {
   const [, setTick] = useState(0);
 
@@ -34,24 +46,28 @@ export function OrderExtraItemsBadge({ extraItems }: OrderExtraItemsBadgeProps) 
 
   if (!extraItems || extraItems.length === 0) return null;
 
-  const recentItems = extraItems.filter(item => getTimeAgo(item.addedAt) !== null);
-  
-  if (recentItems.length === 0) return null;
-
   return (
-    <div className="mt-2 p-2 bg-accent rounded-md">
+    <div className="mt-2 space-y-2">
       <div className="flex items-center gap-1 mb-1">
         <Clock className="h-3 w-3" />
-        <span className="text-xs font-semibold">New Items Added</span>
+        <span className="text-xs font-semibold">Extra Items Added</span>
       </div>
-      {recentItems.map((item, idx) => {
+      {extraItems.map((item, idx) => {
         const timeAgo = getTimeAgo(item.addedAt);
+        const colorClass = getExtraItemColor(idx);
         return (
-          <div key={idx} className="flex items-center justify-between text-xs">
-            <span>{item.name} × {item.quantity}</span>
-            <Badge variant="secondary" className="text-xs py-0">
-              {timeAgo}
-            </Badge>
+          <div 
+            key={idx} 
+            className={`flex items-center justify-between text-sm p-2 rounded-md border ${colorClass}`}
+          >
+            <span className="font-medium">
+              Extra #{idx + 1}: {item.name} × {item.quantity}
+            </span>
+            {timeAgo && (
+              <Badge variant="outline" className="text-xs py-0 bg-background/50">
+                {timeAgo}
+              </Badge>
+            )}
           </div>
         );
       })}
