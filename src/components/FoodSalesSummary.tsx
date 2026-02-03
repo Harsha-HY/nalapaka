@@ -34,38 +34,16 @@ export function FoodSalesSummary({ orders }: FoodSalesSummaryProps) {
     const itemMap: Record<string, ItemSales> = {};
 
     todaysOrders.forEach(order => {
-      // Process base items
-      const baseItems = (order.ordered_items as Array<{
+      // Use ordered_items which contains the final merged list of all items
+      // This is the source of truth and already includes base + extras merged
+      const allItems = (order.ordered_items as Array<{
         name: string;
         nameKn?: string;
         quantity: number;
         price: number;
       }>) || [];
 
-      baseItems.forEach(item => {
-        const key = item.name;
-        if (!itemMap[key]) {
-          itemMap[key] = {
-            name: item.name,
-            nameKn: item.nameKn || item.name,
-            quantity: 0,
-            pricePerUnit: item.price,
-            totalRevenue: 0,
-          };
-        }
-        itemMap[key].quantity += item.quantity;
-        itemMap[key].totalRevenue += item.price * item.quantity;
-      });
-
-      // Process extra items
-      const extraItems = ((order as any).extra_items as Array<{
-        name: string;
-        nameKn?: string;
-        quantity: number;
-        price: number;
-      }>) || [];
-
-      extraItems.forEach(item => {
+      allItems.forEach(item => {
         const key = item.name;
         if (!itemMap[key]) {
           itemMap[key] = {

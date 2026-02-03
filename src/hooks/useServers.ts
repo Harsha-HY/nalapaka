@@ -71,33 +71,38 @@ export function useServers() {
   ) => {
     if (!isManager) throw new Error('Only managers can create servers');
 
-    // Use signUp to create the user (will require email confirmation)
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    
-    if (signUpError) throw signUpError;
-    if (!signUpData.user) throw new Error('Failed to create user');
-    
-    // Add to servers table
-    const { error: serverError } = await supabase
-      .from('servers')
-      .insert({
-        user_id: signUpData.user.id,
-        name,
-        phone_number: phoneNumber,
-        assigned_tables: assignedTables,
-      });
-    
-    if (serverError) throw serverError;
-    
-    // Note: The user role will be updated to 'server' by the trigger or manually
-    // For now, we need to update it via a migration or edge function
-    // The handle_new_user trigger creates 'customer' role by default
-    
+    // Call edge function to create server with admin privileges
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-server`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          name,
+          phoneNumber,
+          assignedTables,
+        }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to create server');
+    }
+
     await fetchServers();
-    return signUpData.user;
+    return result.user;
   };
 
   const updateServer = async (
