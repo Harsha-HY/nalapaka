@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, User, Trash2, Edit, Phone, Table } from 'lucide-react';
+import { Plus, User, Trash2, Edit, Phone, Table, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useServers, Server } from '@/hooks/useServers';
+import { supabase } from '@/integrations/supabase/client';
 
 const ALL_TABLES = Array.from({ length: 20 }, (_, i) => String(i + 1));
 
@@ -16,6 +17,10 @@ export function AccountHandlingSection() {
   const { servers, createServerAccount, updateServer, deleteServer, isLoading } = useServers();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordResetServer, setPasswordResetServer] = useState<Server | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [editingServer, setEditingServer] = useState<Server | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -85,6 +90,66 @@ export function AccountHandlingSection() {
       toast.success('Server deleted');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete server');
+    }
+  };
+
+  const handlePasswordResetClick = (server: Server) => {
+    setPasswordResetServer(server);
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setShowPasswordModal(true);
+  };
+
+  const handlePasswordReset = async () => {
+    if (!passwordResetServer) return;
+    
+    if (newPassword !== confirmNewPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-server-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            serverUserId: passwordResetServer.user_id,
+            newPassword,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to reset password');
+      }
+
+      toast.success(`Password reset for ${passwordResetServer.name}`);
+      setShowPasswordModal(false);
+      setPasswordResetServer(null);
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to reset password');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -160,10 +225,13 @@ export function AccountHandlingSection() {
                     {server.name}
                   </CardTitle>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(server)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePasswordResetClick(server)} title="Reset Password">
+                      <Key className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(server)} title="Edit Server">
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteServer(server)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteServer(server)} title="Delete Server">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -355,6 +423,50 @@ export function AccountHandlingSection() {
               disabled={isSubmitting || !formData.name}
             >
               {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Password Reset Modal */}
+      <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Password for {passwordResetServer?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password *</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                minLength={6}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-new-password">Confirm New Password *</Label>
+              <Input
+                id="confirm-new-password"
+                type="password"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                placeholder="••••••••"
+                minLength={6}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowPasswordModal(false); setPasswordResetServer(null); }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handlePasswordReset} 
+              disabled={isSubmitting || !newPassword || !confirmNewPassword}
+            >
+              {isSubmitting ? 'Resetting...' : 'Reset Password'}
             </Button>
           </DialogFooter>
         </DialogContent>
