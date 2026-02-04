@@ -1,1 +1,7 @@
 project_id = "bhxasqpfibfmczkyclxx"
+
+[functions.create-server]
+verify_jwt = false
+
+[functions.reset-server-password]
+verify_jwt = false

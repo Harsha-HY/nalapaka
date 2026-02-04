@@ -36,10 +36,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+// Manager-only route
+function ManagerRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, role, roleLoading } = useAuth();
   
-  if (isLoading) {
+  if (isLoading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -47,8 +48,60 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (user) {
-    return <Navigate to="/menu" replace />;
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+  
+  if (role !== 'manager') {
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+// Server-only route
+function ServerRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, role, roleLoading } = useAuth();
+  
+  if (isLoading || roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+  
+  if (role !== 'server') {
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, role, roleLoading } = useAuth();
+  
+  if (isLoading || roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  // If user is logged in with role, redirect to appropriate dashboard
+  if (user && role) {
+    if (role === 'manager') {
+      return <Navigate to="/manager" replace />;
+    } else if (role === 'server') {
+      return <Navigate to="/server" replace />;
+    } else {
+      return <Navigate to="/menu" replace />;
+    }
   }
   
   return <>{children}</>;
@@ -62,8 +115,8 @@ const AppRoutes = () => (
     <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
     <Route path="/order-status" element={<ProtectedRoute><OrderStatusPage /></ProtectedRoute>} />
     <Route path="/order-history" element={<ProtectedRoute><OrderHistoryPage /></ProtectedRoute>} />
-    <Route path="/manager" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
-    <Route path="/server" element={<ProtectedRoute><ServerDashboard /></ProtectedRoute>} />
+    <Route path="/manager" element={<ManagerRoute><ManagerDashboard /></ManagerRoute>} />
+    <Route path="/server" element={<ServerRoute><ServerDashboard /></ServerRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
