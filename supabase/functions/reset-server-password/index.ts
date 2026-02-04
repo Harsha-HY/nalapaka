@@ -1,5 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
-import { corsHeaders } from '../_shared/cors.ts'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -19,7 +23,7 @@ Deno.serve(async (req) => {
       }
     })
 
-    // Create regular client to verify the caller is a manager
+    // Get authorization header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(
@@ -28,6 +32,7 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Verify the caller using getUser
     const token = authHeader.replace('Bearer ', '')
     const { data: { user: callerUser }, error: userError } = await supabaseAdmin.auth.getUser(token)
     
@@ -38,11 +43,13 @@ Deno.serve(async (req) => {
       )
     }
 
+    const callerUserId = callerUser.id
+
     // Check if caller is a manager
     const { data: callerRole } = await supabaseAdmin
       .from('user_roles')
       .select('role')
-      .eq('user_id', callerUser.id)
+      .eq('user_id', callerUserId)
       .single()
 
     if (callerRole?.role !== 'manager') {
@@ -69,21 +76,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verify the target user is a server
-    const { data: targetRole } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', serverUserId)
-      .single()
-
-    if (targetRole?.role !== 'server') {
-      return new Response(
-        JSON.stringify({ error: 'Can only reset passwords for server accounts' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Reset the password using admin API
+    // Reset password using admin API
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
       serverUserId,
       { password: newPassword }
@@ -97,12 +90,13 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: 'Password updated successfully' }),
+      JSON.stringify({ success: true, message: 'Password reset successfully' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+    console.error('Reset password error:', errorMessage)
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

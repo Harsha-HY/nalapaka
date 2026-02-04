@@ -15,22 +15,50 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { signIn, role, user } = useAuth();
+  const { signIn, role, user, isLoading, roleLoading } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  // Redirect based on role when user is authenticated
+  // STRICT role-based redirect - waits for role to be loaded
   useEffect(() => {
-    if (user && role) {
+    if (user && role && !roleLoading) {
+      console.log('Redirecting based on role:', role);
+      
+      // STRICT REDIRECT RULES - NO FALLBACK
       if (role === 'manager') {
-        navigate('/manager');
+        navigate('/manager', { replace: true });
       } else if (role === 'server') {
-        navigate('/server');
+        navigate('/server', { replace: true });
       } else {
-        navigate('/menu');
+        // Customer or any other role
+        navigate('/menu', { replace: true });
       }
     }
-  }, [user, role, navigate]);
+  }, [user, role, roleLoading, navigate]);
+
+  // Show loading while checking existing session
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground mt-2">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while role is being fetched after login
+  if (user && roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground mt-2">Verifying account...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,14 +70,17 @@ export default function AuthPage() {
       if (error) {
         if (error.message.includes('Invalid login')) {
           setError(t('wrongPassword'));
+        } else if (error.message.includes('Email not confirmed')) {
+          // This should not happen since we auto-confirm
+          setError('Account not verified. Please contact manager.');
         } else {
           setError(error.message);
         }
+        setIsSubmitting(false);
       }
       // Navigation will happen via useEffect when role is set
     } catch (err) {
       setError('An unexpected error occurred');
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -70,7 +101,7 @@ export default function AuthPage() {
           <p className="text-lg text-muted-foreground">Nanjangud</p>
         </div>
 
-        {/* Auth card */}
+        {/* Auth card - LOGIN ONLY */}
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">{t('login')}</CardTitle>
@@ -87,6 +118,7 @@ export default function AuthPage() {
                   placeholder="your@email.com"
                   required
                   className="h-12 text-base"
+                  autoComplete="email"
                 />
               </div>
 
@@ -101,6 +133,7 @@ export default function AuthPage() {
                   required
                   minLength={6}
                   className="h-12 text-base"
+                  autoComplete="current-password"
                 />
               </div>
 

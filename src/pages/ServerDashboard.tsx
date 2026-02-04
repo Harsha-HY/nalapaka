@@ -34,24 +34,24 @@ type ServerSection = 'orders' | 'history';
 
 export default function ServerDashboard() {
   const { language } = useLanguage();
-  const { signOut, user } = useAuth();
+  const { signOut, user, isServer } = useAuth();
   const { orders, isLoading, refreshOrders } = useOrders();
   const { currentServer } = useServers();
   const { unlockSeatsByOrderId } = useLockedSeats();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<ServerSection>('orders');
 
-  // Redirect if not a server
+  // Redirect if not a server - STRICT server-only access
   useEffect(() => {
-    if (!currentServer) {
+    if (!isServer && !currentServer) {
       const timer = setTimeout(() => {
         if (!currentServer) {
-          navigate('/menu');
+          navigate('/');
         }
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [currentServer, navigate]);
+  }, [currentServer, isServer, navigate]);
 
   // Get today's date and 48 hours ago for filtering
   const { today, fortyEightHoursAgo } = useMemo(() => {

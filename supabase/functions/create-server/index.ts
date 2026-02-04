@@ -1,5 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
-import { corsHeaders } from '../_shared/cors.ts'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -19,7 +23,7 @@ Deno.serve(async (req) => {
       }
     })
 
-    // Create regular client to verify the caller is a manager
+    // Get authorization header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(
@@ -28,6 +32,7 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Verify the caller using getUser
     const token = authHeader.replace('Bearer ', '')
     const { data: { user: callerUser }, error: userError } = await supabaseAdmin.auth.getUser(token)
     
@@ -38,11 +43,13 @@ Deno.serve(async (req) => {
       )
     }
 
+    const callerUserId = callerUser.id
+
     // Check if caller is a manager
     const { data: callerRole } = await supabaseAdmin
       .from('user_roles')
       .select('role')
-      .eq('user_id', callerUser.id)
+      .eq('user_id', callerUserId)
       .single()
 
     if (callerRole?.role !== 'manager') {
@@ -62,11 +69,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Create user with admin API (auto-confirmed)
+    // Create user with admin API (auto-confirmed, no email verification needed)
     const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Auto-confirm email
+      email_confirm: true, // Auto-confirm email - NO verification required
     })
 
     if (createError) {
@@ -83,17 +90,32 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Update user role to 'server'
-    const { error: roleError } = await supabaseAdmin
+    // Check if user_role already exists (trigger might have created it)
+    const { data: existingRole } = await supabaseAdmin
       .from('user_roles')
-      .update({ role: 'server' })
+      .select('id')
       .eq('user_id', authData.user.id)
+      .single()
 
-    if (roleError) {
-      // Role might not exist yet if trigger didn't fire, create it
-      await supabaseAdmin
+    if (existingRole) {
+      // Update existing role to 'server'
+      const { error: updateRoleError } = await supabaseAdmin
+        .from('user_roles')
+        .update({ role: 'server' })
+        .eq('user_id', authData.user.id)
+
+      if (updateRoleError) {
+        console.error('Error updating role:', updateRoleError)
+      }
+    } else {
+      // Insert new role
+      const { error: insertRoleError } = await supabaseAdmin
         .from('user_roles')
         .insert({ user_id: authData.user.id, role: 'server' })
+
+      if (insertRoleError) {
+        console.error('Error inserting role:', insertRoleError)
+      }
     }
 
     // Add to servers table
@@ -104,6 +126,7 @@ Deno.serve(async (req) => {
         name,
         phone_number: phoneNumber || null,
         assigned_tables: assignedTables || [],
+        is_active: true,
       })
 
     if (serverError) {
@@ -114,12 +137,20 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, user: { id: authData.user.id, email: authData.user.email } }),
+      JSON.stringify({ 
+        success: true, 
+        user: { 
+          id: authData.user.id, 
+          email: authData.user.email 
+        },
+        message: 'Server account created successfully. They can now login with the provided credentials.'
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+    console.error('Create server error:', errorMessage)
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useOrders, Order } from '@/hooks/useOrders';
+import { useLockedSeats } from '@/hooks/useLockedSeats';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ import { toast } from 'sonner';
 export default function OrderStatusPage() {
   const { t, language } = useLanguage();
   const { currentOrder, markEatingFinished, updatePaymentIntent } = useOrders();
+  const { unlockSeatsByOrderId } = useLockedSeats();
   const navigate = useNavigate();
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [showUPIModal, setShowUPIModal] = useState(false);
@@ -93,6 +95,13 @@ export default function OrderStatusPage() {
         await updatePaymentIntent(currentOrder.id, method);
       }
       await markEatingFinished(currentOrder.id);
+      
+      // AUTO RESET: Unlock seats when customer clicks "Everything is finished"
+      const seats = (currentOrder as any).seats || [];
+      if (seats.length > 0) {
+        await unlockSeatsByOrderId(currentOrder.id);
+        console.log(`Table ${currentOrder.table_number} – Seats ${seats.join(', ')} have been reset automatically`);
+      }
       
       if (method === 'Cash') {
         toast.info(
