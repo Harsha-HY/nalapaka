@@ -10,12 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 
 export default function AuthPage() {
+  const [isCreateAccount, setIsCreateAccount] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { signIn, role, user, isLoading, roleLoading } = useAuth();
+  const { signIn, signUp, role, user, isLoading, roleLoading } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -63,26 +65,60 @@ export default function AuthPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // Validation for create account
+    if (isCreateAccount) {
+      if (password !== confirmPassword) {
+        setError(t('passwordMismatch') || 'Passwords do not match');
+        return;
+      }
+      if (password.length < 6) {
+        setError(t('passwordTooShort') || 'Password must be at least 6 characters');
+        return;
+      }
+    }
+    
     setIsSubmitting(true);
 
     try {
-      const { error } = await signIn(email, password);
-      if (error) {
-        if (error.message.includes('Invalid login')) {
-          setError(t('wrongPassword'));
-        } else if (error.message.includes('Email not confirmed')) {
-          // This should not happen since we auto-confirm
-          setError('Account not verified. Please contact manager.');
-        } else {
-          setError(error.message);
+      if (isCreateAccount) {
+        // Create account flow - customers only
+        const { error } = await signUp(email, password);
+        if (error) {
+          if (error.message.includes('already registered')) {
+            setError(t('emailAlreadyExists') || 'This email is already registered. Please login instead.');
+          } else {
+            setError(error.message);
+          }
+          setIsSubmitting(false);
         }
-        setIsSubmitting(false);
+        // Navigation will happen via useEffect when role is set (customer -> /menu)
+      } else {
+        // Login flow
+        const { error } = await signIn(email, password);
+        if (error) {
+          if (error.message.includes('Invalid login')) {
+            setError(t('wrongPassword') || 'Invalid email or password');
+          } else if (error.message.includes('Email not confirmed')) {
+            setError('Account not verified. Please contact manager.');
+          } else {
+            setError(error.message);
+          }
+          setIsSubmitting(false);
+        }
+        // Navigation will happen via useEffect when role is set
       }
-      // Navigation will happen via useEffect when role is set
     } catch (err) {
       setError('An unexpected error occurred');
       setIsSubmitting(false);
     }
+  };
+
+  const toggleMode = () => {
+    setIsCreateAccount(!isCreateAccount);
+    setError('');
+    setPassword('');
+    setConfirmPassword('');
   };
 
   return (
@@ -101,10 +137,12 @@ export default function AuthPage() {
           <p className="text-lg text-muted-foreground">Nanjangud</p>
         </div>
 
-        {/* Auth card - LOGIN ONLY */}
+        {/* Auth card */}
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">{t('login')}</CardTitle>
+            <CardTitle className="text-2xl">
+              {isCreateAccount ? (t('createAccount') || 'Create Account') : t('login')}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -133,9 +171,26 @@ export default function AuthPage() {
                   required
                   minLength={6}
                   className="h-12 text-base"
-                  autoComplete="current-password"
+                  autoComplete={isCreateAccount ? "new-password" : "current-password"}
                 />
               </div>
+
+              {isCreateAccount && (
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">{t('confirmPassword') || 'Confirm Password'}</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                    className="h-12 text-base"
+                    autoComplete="new-password"
+                  />
+                </div>
+              )}
 
               {error && (
                 <p className="text-destructive text-sm text-center">{error}</p>
@@ -149,18 +204,40 @@ export default function AuthPage() {
                 {isSubmitting ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  t('login')
+                  isCreateAccount ? (t('createAccount') || 'Create Account') : t('login')
                 )}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                {t('forgotPassword')}
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Contact manager for account access
-              </p>
+              {isCreateAccount ? (
+                <p className="text-sm text-muted-foreground">
+                  {t('alreadyHaveAccount') || 'Already have an account?'}{' '}
+                  <button
+                    type="button"
+                    onClick={toggleMode}
+                    className="text-primary font-medium hover:underline"
+                  >
+                    {t('login')}
+                  </button>
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    {t('noAccount') || "Don't have an account?"}{' '}
+                    <button
+                      type="button"
+                      onClick={toggleMode}
+                      className="text-primary font-medium hover:underline"
+                    >
+                      {t('createAccount') || 'Create Account'}
+                    </button>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {t('forgotPassword')}
+                  </p>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
