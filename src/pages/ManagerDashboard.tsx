@@ -22,7 +22,8 @@ import {
   Users,
   MessageSquare,
   BarChart3,
-  QrCode
+  QrCode,
+  UserCheck
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -542,6 +543,7 @@ function PendingOrderCard({
   const paymentIntent = (order as any).payment_intent;
   const eatingFinished = order.eating_finished;
   const extraItems = (order as any).extra_items || [];
+  const acceptedByServerName = (order as any).accepted_by_server_name;
 
   const handleCall = () => {
     window.location.href = `tel:${order.phone_number}`;
@@ -589,6 +591,16 @@ function PendingOrderCard({
             <Printer className="h-4 w-4 mr-1" />
             Print EXTRA Items
           </Button>
+        )}
+
+        {/* Server Acceptance Status */}
+        {acceptedByServerName && (
+          <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-success/20 text-success">
+            <UserCheck className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              Accepted by Server: {acceptedByServerName}
+            </span>
+          </div>
         )}
 
         {/* Customer Info */}

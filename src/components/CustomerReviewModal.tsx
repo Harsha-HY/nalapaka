@@ -98,7 +98,8 @@ export function CustomerReviewModal({
       );
       onClose();
     } catch (error) {
-      toast.error('Failed to submit review');
+      console.error('Failed to submit review:', error);
+      toast.error('Failed to submit review. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

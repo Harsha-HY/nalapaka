@@ -15,6 +15,9 @@ export type Order = OrderRow & {
   order_stage?: 'cart' | 'order_confirmed' | 'finished_eating' | 'payment_selected' | 'completed';
   base_items?: any[];
   extra_items?: any[];
+  accepted_by_server_id?: string | null;
+  accepted_by_server_name?: string | null;
+  server_accepted_at?: string | null;
 };
 
 type OrderInsert = Database['public']['Tables']['orders']['Insert'];
@@ -174,6 +177,20 @@ export function useOrders() {
     if (error) throw error;
   };
 
+  // Server accepts an order
+  const serverAcceptOrder = async (orderId: string, serverUserId: string, serverName: string) => {
+    const { error } = await supabase
+      .from('orders')
+      .update({
+        accepted_by_server_id: serverUserId,
+        accepted_by_server_name: serverName,
+        server_accepted_at: new Date().toISOString(),
+      } as any)
+      .eq('id', orderId);
+
+    if (error) throw error;
+  };
+
   const confirmOrder = async (orderId: string, waitTimeMinutes?: number) => {
     const updateData: any = { 
       order_status: 'Confirmed',
@@ -326,6 +343,7 @@ export function useOrders() {
     isLoading,
     createOrder,
     addItemsToOrder,
+    serverAcceptOrder,
     confirmOrder,
     cancelOrder,
     deleteOrder,

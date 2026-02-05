@@ -13,7 +13,8 @@ import {
   AlertCircle,
   User,
   History,
-  Table
+  Table,
+  UserCheck
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,7 +36,7 @@ type ServerSection = 'orders' | 'history';
 export default function ServerDashboard() {
   const { language } = useLanguage();
   const { signOut, user, isServer } = useAuth();
-  const { orders, isLoading, refreshOrders } = useOrders();
+  const { orders, isLoading, refreshOrders, serverAcceptOrder } = useOrders();
   const { currentServer } = useServers();
   const { unlockSeatsByOrderId } = useLockedSeats();
   const navigate = useNavigate();
@@ -112,6 +113,17 @@ export default function ServerDashboard() {
       toast.success(`Table ${tableNumber} – Seats ${seats.join(', ')} have been reset`);
     } catch (error) {
       toast.error('Failed to reset table');
+    }
+  };
+
+  const handleAcceptOrder = async (orderId: string) => {
+    if (!currentServer || !user) return;
+    
+    try {
+      await serverAcceptOrder(orderId, user.id, currentServer.name);
+      toast.success('Order accepted! Manager has been notified.');
+    } catch (error) {
+      toast.error('Failed to accept order');
     }
   };
 
@@ -226,9 +238,11 @@ export default function ServerDashboard() {
                       key={order.id}
                       order={order}
                       language={language}
+                      currentServer={currentServer}
                       onResetSeats={() => handleResetSeats(order.id, order.table_number, (order as any).seats || [])}
                       onPrintKitchen={() => handlePrintKitchen(order, false)}
                       onPrintExtraKitchen={() => handlePrintKitchen(order, true)}
+                      onAcceptOrder={() => handleAcceptOrder(order.id)}
                     />
                   ))}
                 </div>
@@ -331,17 +345,21 @@ export default function ServerDashboard() {
 interface ServerOrderCardProps {
   order: Order;
   language: 'en' | 'kn';
+  currentServer: { name: string; user_id: string } | null;
   onResetSeats: () => void;
   onPrintKitchen: () => void;
   onPrintExtraKitchen: () => void;
+  onAcceptOrder: () => void;
 }
 
 function ServerOrderCard({ 
   order, 
   language, 
+  currentServer,
   onResetSeats,
   onPrintKitchen,
-  onPrintExtraKitchen
+  onPrintExtraKitchen,
+  onAcceptOrder
 }: ServerOrderCardProps) {
   const orderedItems = order.ordered_items as Array<{
     name: string;
@@ -359,6 +377,8 @@ function ServerOrderCard({
   const paymentIntent = (order as any).payment_intent;
   const eatingFinished = order.eating_finished;
   const extraItems = (order as any).extra_items || [];
+  const acceptedByServerName = (order as any).accepted_by_server_name;
+  const isAcceptedByMe = currentServer && (order as any).accepted_by_server_id === currentServer.user_id;
 
   const handleCall = () => {
     window.location.href = `tel:${order.phone_number}`;
@@ -404,6 +424,27 @@ function ServerOrderCard({
           <Button variant="outline" size="sm" className="w-full bg-accent" onClick={onPrintExtraKitchen}>
             <Printer className="h-4 w-4 mr-1" />
             Print EXTRA Items
+          </Button>
+        )}
+
+        {/* Server Acceptance Status */}
+        {acceptedByServerName && (
+          <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-success/20 text-success">
+            <UserCheck className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              {isAcceptedByMe ? 'You accepted this order' : `Accepted by ${acceptedByServerName}`}
+            </span>
+          </div>
+        )}
+
+        {/* Accept Order Button - show if confirmed but not yet accepted */}
+        {isConfirmed && !acceptedByServerName && (
+          <Button 
+            className="w-full bg-success hover:bg-success/90" 
+            onClick={onAcceptOrder}
+          >
+            <UserCheck className="h-4 w-4 mr-1" />
+            Accept Order
           </Button>
         )}
 

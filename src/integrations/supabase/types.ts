@@ -84,6 +84,8 @@ export type Database = {
       }
       orders: {
         Row: {
+          accepted_by_server_id: string | null
+          accepted_by_server_name: string | null
           archived_at: string | null
           base_items: Json | null
           confirmed_at: string | null
@@ -101,6 +103,7 @@ export type Database = {
           payment_mode: Database["public"]["Enums"]["payment_mode"]
           phone_number: string
           seats: string[] | null
+          server_accepted_at: string | null
           server_id: string | null
           server_name: string | null
           table_number: string
@@ -110,6 +113,8 @@ export type Database = {
           wait_time_minutes: number | null
         }
         Insert: {
+          accepted_by_server_id?: string | null
+          accepted_by_server_name?: string | null
           archived_at?: string | null
           base_items?: Json | null
           confirmed_at?: string | null
@@ -127,6 +132,7 @@ export type Database = {
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
           phone_number: string
           seats?: string[] | null
+          server_accepted_at?: string | null
           server_id?: string | null
           server_name?: string | null
           table_number: string
@@ -136,6 +142,8 @@ export type Database = {
           wait_time_minutes?: number | null
         }
         Update: {
+          accepted_by_server_id?: string | null
+          accepted_by_server_name?: string | null
           archived_at?: string | null
           base_items?: Json | null
           confirmed_at?: string | null
@@ -153,6 +161,7 @@ export type Database = {
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
           phone_number?: string
           seats?: string[] | null
+          server_accepted_at?: string | null
           server_id?: string | null
           server_name?: string | null
           table_number?: string

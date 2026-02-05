@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import type { Database } from '@/integrations/supabase/types';
+
+type ReviewRow = Database['public']['Tables']['reviews']['Row'];
+type ReviewInsert = Database['public']['Tables']['reviews']['Insert'];
 
 export interface Review {
   id: string;
@@ -18,13 +22,27 @@ export interface Review {
   created_at: string;
 }
 
+// Convert database row to Review type
+function toReview(row: ReviewRow): Review {
+  return {
+    ...row,
+    seats: row.seats || [],
+  };
+}
+
 export function useReviews() {
   const { user, isManager } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchReviews = useCallback(async () => {
-    if (!user || !isManager) return;
+    if (!user) return;
+    
+    // Only managers can view all reviews
+    if (!isManager) {
+      setReviews([]);
+      return;
+    }
     
     setIsLoading(true);
     try {
@@ -34,7 +52,7 @@ export function useReviews() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setReviews((data || []) as Review[]);
+      setReviews((data || []).map(toReview));
     } catch (error) {
       console.error('Error fetching reviews:', error);
     } finally {
@@ -70,15 +88,44 @@ export function useReviews() {
     };
   }, [user, isManager, fetchReviews]);
 
-  const createReview = async (reviewData: Omit<Review, 'id' | 'created_at'>) => {
+  // Create review - this can be called by any authenticated user (customer)
+  const createReview = async (reviewData: {
+    order_id?: string | null;
+    customer_name: string;
+    phone_number?: string | null;
+    table_number: string;
+    seats?: string[];
+    server_name?: string | null;
+    food_rating?: number | null;
+    service_rating?: number | null;
+    hotel_rating?: number | null;
+    website_rating?: number | null;
+    review_text?: string | null;
+  }) => {
+    if (!user) throw new Error('User not authenticated');
+    
+    const insertData: ReviewInsert = {
+      customer_name: reviewData.customer_name,
+      table_number: reviewData.table_number,
+      order_id: reviewData.order_id || null,
+      phone_number: reviewData.phone_number || null,
+      seats: reviewData.seats || [],
+      server_name: reviewData.server_name || null,
+      food_rating: reviewData.food_rating ?? null,
+      service_rating: reviewData.service_rating ?? null,
+      hotel_rating: reviewData.hotel_rating ?? null,
+      website_rating: reviewData.website_rating ?? null,
+      review_text: reviewData.review_text || null,
+    };
+    
     const { data, error } = await supabase
       .from('reviews')
-      .insert(reviewData)
+      .insert(insertData)
       .select()
       .single();
 
     if (error) throw error;
-    return data;
+    return toReview(data);
   };
 
   const deleteTodayReviews = async () => {
