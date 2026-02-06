@@ -22,7 +22,6 @@ import {
   Users,
   MessageSquare,
   BarChart3,
-  QrCode,
   UserCheck
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -42,7 +41,7 @@ import { FoodSalesSummary } from '@/components/FoodSalesSummary';
 import { AccountHandlingSection } from '@/components/AccountHandlingSection';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { AnalyticsSection } from '@/components/AnalyticsSection';
-import { QRCodePayment } from '@/components/QRCodePayment';
+// QRCodePayment removed from manager - manager only sees text for UPI
 import { printKitchenSlip, printBill } from '@/components/KitchenSlipPrint';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -631,9 +630,14 @@ function PendingOrderCard({
           </div>
         )}
 
-        {/* QR Code for UPI Payment */}
+        {/* UPI Payment Text Notice (no QR for manager) */}
         {eatingFinished && paymentIntent === 'UPI' && (
-          <QRCodePayment amount={order.total_amount} orderId={order.id} size={120} />
+          <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-primary/10">
+            <Smartphone className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">
+              Customer at Table {order.table_number} is paying via UPI
+            </span>
+          </div>
         )}
 
         {/* Timer */}

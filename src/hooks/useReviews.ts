@@ -118,14 +118,12 @@ export function useReviews() {
       review_text: reviewData.review_text || null,
     };
     
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('reviews')
-      .insert(insertData)
-      .select()
-      .single();
+      .insert(insertData);
 
     if (error) throw error;
-    return toReview(data);
+    return insertData as unknown as Review;
   };
 
   const deleteTodayReviews = async () => {
