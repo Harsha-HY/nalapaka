@@ -437,8 +437,8 @@ function ServerOrderCard({
           </div>
         )}
 
-        {/* Accept Order Button - show if confirmed but not yet accepted */}
-        {isConfirmed && !acceptedByServerName && (
+        {/* Accept Order Button - show for pending or confirmed orders not yet accepted */}
+        {!acceptedByServerName && (isPending || isConfirmed) && (
           <Button 
             className="w-full bg-success hover:bg-success/90" 
             onClick={onAcceptOrder}

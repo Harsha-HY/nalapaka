@@ -43,6 +43,7 @@ import { ReviewsSection } from '@/components/ReviewsSection';
 import { AnalyticsSection } from '@/components/AnalyticsSection';
 // QRCodePayment removed from manager - manager only sees text for UPI
 import { printKitchenSlip, printBill } from '@/components/KitchenSlipPrint';
+import { getFoodThumbnail } from '@/data/foodImages';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -425,11 +426,20 @@ export default function ManagerDashboard() {
                     <CardContent className="space-y-2">
                       {categoryItems.map((item) => (
                         <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                          <div>
-                            <p className={`font-medium ${!item.isAvailable ? 'text-muted-foreground line-through' : ''}`}>
-                              {language === 'kn' ? item.nameKn : item.name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">₹{item.price}</p>
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={getFoodThumbnail(item.id)} 
+                              alt={item.name}
+                              className="w-10 h-10 rounded-md object-cover"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              loading="lazy"
+                            />
+                            <div>
+                              <p className={`font-medium ${!item.isAvailable ? 'text-muted-foreground line-through' : ''}`}>
+                                {language === 'kn' ? item.nameKn : item.name}
+                              </p>
+                              <p className="text-sm text-muted-foreground">₹{item.price}</p>
+                            </div>
                           </div>
                           <Button
                             variant={item.isAvailable ? 'destructive' : 'default'}
@@ -678,7 +688,8 @@ function PendingOrderCard({
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-2 pt-2">
-          {isPending && (
+          {/* Show Confirm/Reject ONLY if pending AND not yet accepted by server */}
+          {isPending && !acceptedByServerName && (
             <>
               <Button onClick={onConfirm} className="w-full">
                 <CheckCircle className="h-4 w-4 mr-1" />
@@ -690,6 +701,14 @@ function PendingOrderCard({
               </Button>
             </>
           )}
+          {/* Once server accepted pending order, manager only sees Reject */}
+          {isPending && acceptedByServerName && (
+            <Button variant="destructive" onClick={onReject} className="w-full col-span-2">
+              <XCircle className="h-4 w-4 mr-1" />
+              Reject Order
+            </Button>
+          )}
+          {/* Payment confirmation buttons for confirmed orders */}
           {isConfirmed && (
             <>
               <Button onClick={onPaymentCash} className="w-full" variant="outline">
