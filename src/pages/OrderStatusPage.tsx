@@ -191,13 +191,26 @@ export default function OrderStatusPage() {
       </div>
 
       <main className="flex-1 container py-6 space-y-4">
-        {/* Server info */}
+      {/* Server info with call button */}
         {serverName && (
           <Card className="shadow-soft border-0 border-l-4 border-l-primary animate-slide-up">
-            <CardContent className="py-3 px-4">
+            <CardContent className="py-3 px-4 flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
                 {language === 'kn' ? 'ನಿಮ್ಮ ಸರ್ವರ್:' : 'Your server:'}{' '}
                 <span className="font-semibold text-foreground">{serverName}</span>
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Server accepted notification */}
+        {(currentOrder as any).accepted_by_server_name && (
+          <Card className="shadow-soft border-0 border-l-4 border-l-success animate-slide-up">
+            <CardContent className="py-3 px-4">
+              <p className="text-sm text-success font-medium">
+                {language === 'kn' 
+                  ? `ನಿಮ್ಮ ಆರ್ಡರ್ ಅನ್ನು ${(currentOrder as any).accepted_by_server_name} ಸ್ವೀಕರಿಸಿದ್ದಾರೆ` 
+                  : `Your order is accepted by ${(currentOrder as any).accepted_by_server_name}`}
               </p>
             </CardContent>
           </Card>
