@@ -9,7 +9,9 @@ import {
   Plus,
   UtensilsCrossed,
   History,
-  Package
+  Package,
+  Phone,
+  MessageCircle
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useOrders, Order } from '@/hooks/useOrders';
@@ -203,15 +205,48 @@ export default function OrderStatusPage() {
           </Card>
         )}
 
-        {/* Server accepted notification */}
+        {/* Server accepted notification with call/message options */}
         {(currentOrder as any).accepted_by_server_name && (
           <Card className="shadow-soft border-0 border-l-4 border-l-success animate-slide-up">
-            <CardContent className="py-3 px-4">
+            <CardContent className="py-3 px-4 space-y-3">
               <p className="text-sm text-success font-medium">
                 {language === 'kn' 
                   ? `ನಿಮ್ಮ ಆರ್ಡರ್ ಅನ್ನು ${(currentOrder as any).accepted_by_server_name} ಸ್ವೀಕರಿಸಿದ್ದಾರೆ` 
                   : `Your order is accepted by ${(currentOrder as any).accepted_by_server_name}`}
               </p>
+              <p className="text-foreground font-semibold">
+                {language === 'kn' ? 'ಸರ್ವರ್:' : 'Server:'} {(currentOrder as any).accepted_by_server_name}
+              </p>
+              {currentOrder.phone_number && (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => window.location.href = `tel:${currentOrder.phone_number}`}
+                  >
+                    <Phone className="h-4 w-4 mr-1 text-success" />
+                    {language === 'kn' ? 'ಕರೆ ಮಾಡಿ' : 'Call Server'}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => {
+                      const phone = currentOrder.phone_number.replace(/\D/g, '');
+                      const msg = encodeURIComponent(
+                        language === 'kn' 
+                          ? `ನಮಸ್ಕಾರ, ನಾನು ಟೇಬಲ್ ${currentOrder.table_number} ನಲ್ಲಿದ್ದೇನೆ` 
+                          : `Hi, I'm at Table ${currentOrder.table_number}`
+                      );
+                      window.open(`https://wa.me/91${phone}?text=${msg}`, '_blank');
+                    }}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-1 text-success" />
+                    {language === 'kn' ? 'WhatsApp' : 'WhatsApp'}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
