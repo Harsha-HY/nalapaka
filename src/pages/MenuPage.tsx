@@ -161,11 +161,11 @@ export default function MenuPage() {
       </header>
 
       {/* Menu items */}
-      <main className="flex-1 container py-6 pb-28">
+      <main className="flex-1 container py-4 pb-28 px-3">
         {isMenuLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="aspect-[3/4] w-full rounded-2xl" />
             ))}
           </div>
         ) : Object.keys(groupedItems).length === 0 ? (
@@ -177,14 +177,14 @@ export default function MenuPage() {
           </div>
         ) : (
           Object.entries(groupedItems).map(([category, items]) => (
-            <section key={category} className="mb-8 animate-fade-in">
-              <h2 className="section-header mb-4 px-1">
+            <section key={category} className="mb-6 animate-fade-in">
+              <h2 className="section-header mb-3 px-1">
                 {getCategoryLabel(category, language)}
                 <span className="text-sm font-normal text-muted-foreground">
                   ({items.length})
                 </span>
               </h2>
-              <div className="grid gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {items.map((item) => (
                   <MenuItemCard key={item.id} item={item} />
                 ))}
