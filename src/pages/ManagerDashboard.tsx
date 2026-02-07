@@ -33,7 +33,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { WaitTimeSelector } from '@/components/WaitTimeSelector';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { ManagerHistorySection } from '@/components/ManagerHistorySection';
 import { OrderExtraItemsBadge } from '@/components/OrderExtraItemsBadge';
@@ -55,7 +54,6 @@ export default function ManagerDashboard() {
   const { 
     orders, 
     isLoading, 
-    confirmOrder, 
     cancelOrder, 
     confirmPayment, 
     deleteOrder, 
@@ -69,7 +67,6 @@ export default function ManagerDashboard() {
   const navigate = useNavigate();
   
   const [activeSection, setActiveSection] = useState<DashboardSection>('orders');
-  const [waitTimeOrderId, setWaitTimeOrderId] = useState<string | null>(null);
 
   // Redirect non-managers
   useEffect(() => {
@@ -106,22 +103,7 @@ export default function ManagerDashboard() {
     return null;
   }
 
-  const handleConfirmOrder = (orderId: string) => {
-    setWaitTimeOrderId(orderId);
-  };
-
-  const handleWaitTimeSelect = async (minutes: number) => {
-    if (!waitTimeOrderId) return;
-    
-    try {
-      await confirmOrder(waitTimeOrderId, minutes);
-      toast.success('Order confirmed!');
-    } catch (error) {
-      toast.error('Failed to confirm order');
-    } finally {
-      setWaitTimeOrderId(null);
-    }
-  };
+  // Manager no longer confirms orders — server accept is final authority
 
   const handleRejectOrder = async (orderId: string) => {
     try {
@@ -376,7 +358,6 @@ export default function ManagerDashboard() {
                         key={order.id}
                         order={order}
                         language={language}
-                        onConfirm={() => handleConfirmOrder(order.id)}
                         onReject={() => handleRejectOrder(order.id)}
                         onPaymentCash={() => handlePaymentConfirm(order.id, 'Cash')}
                         onPaymentUPI={() => handlePaymentConfirm(order.id, 'Online')}
@@ -502,12 +483,6 @@ export default function ManagerDashboard() {
         </main>
       </div>
 
-      {/* Wait Time Selector Modal */}
-      <WaitTimeSelector
-        open={waitTimeOrderId !== null}
-        onClose={() => setWaitTimeOrderId(null)}
-        onSelect={handleWaitTimeSelect}
-      />
     </div>
   );
 }
@@ -516,7 +491,6 @@ export default function ManagerDashboard() {
 interface PendingOrderCardProps {
   order: Order;
   language: 'en' | 'kn';
-  onConfirm: () => void;
   onReject: () => void;
   onPaymentCash: () => void;
   onPaymentUPI: () => void;
@@ -528,7 +502,6 @@ interface PendingOrderCardProps {
 function PendingOrderCard({ 
   order, 
   language, 
-  onConfirm, 
   onReject,
   onPaymentCash,
   onPaymentUPI,
@@ -687,30 +660,17 @@ function PendingOrderCard({
         </Badge>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-2 pt-2">
-          {/* Show Confirm/Reject ONLY if pending AND not yet accepted by server */}
-          {isPending && !acceptedByServerName && (
-            <>
-              <Button onClick={onConfirm} className="w-full">
-                <CheckCircle className="h-4 w-4 mr-1" />
-                Confirm
-              </Button>
-              <Button variant="destructive" onClick={onReject} className="w-full">
-                <XCircle className="h-4 w-4 mr-1" />
-                Reject
-              </Button>
-            </>
-          )}
-          {/* Once server accepted pending order, manager only sees Reject */}
-          {isPending && acceptedByServerName && (
-            <Button variant="destructive" onClick={onReject} className="w-full col-span-2">
+        <div className="grid gap-2 pt-2">
+          {/* Reject button - Manager emergency override (available for any non-paid order) */}
+          {!order.payment_confirmed && (
+            <Button variant="destructive" onClick={onReject} className="w-full">
               <XCircle className="h-4 w-4 mr-1" />
               Reject Order
             </Button>
           )}
           {/* Payment confirmation buttons for confirmed orders */}
           {isConfirmed && (
-            <>
+            <div className="grid grid-cols-2 gap-2">
               <Button onClick={onPaymentCash} className="w-full" variant="outline">
                 <Banknote className="h-4 w-4 mr-1" />
                 Cash Paid
@@ -719,7 +679,7 @@ function PendingOrderCard({
                 <Smartphone className="h-4 w-4 mr-1" />
                 UPI Paid
               </Button>
-            </>
+            </div>
           )}
         </div>
 

@@ -177,7 +177,7 @@ export function useOrders() {
     if (error) throw error;
   };
 
-  // Server accepts an order
+  // Server accepts an order — this is the FINAL confirmation
   const serverAcceptOrder = async (orderId: string, serverUserId: string, serverName: string) => {
     const { error } = await supabase
       .from('orders')
@@ -185,6 +185,9 @@ export function useOrders() {
         accepted_by_server_id: serverUserId,
         accepted_by_server_name: serverName,
         server_accepted_at: new Date().toISOString(),
+        order_status: 'Confirmed',
+        confirmed_at: new Date().toISOString(),
+        order_stage: 'order_confirmed',
       } as any)
       .eq('id', orderId);
 
