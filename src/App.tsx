@@ -14,6 +14,7 @@ import OrderStatusPage from "./pages/OrderStatusPage";
 import OrderHistoryPage from "./pages/OrderHistoryPage";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import ServerDashboard from "./pages/ServerDashboard";
+import KitchenDashboard from "./pages/KitchenDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,13 +49,8 @@ function ManagerRoute({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-  
-  if (role !== 'manager') {
-    return <Navigate to="/" replace />;
-  }
+  if (!user) return <Navigate to="/" replace />;
+  if (role !== 'manager') return <Navigate to="/" replace />;
   
   return <>{children}</>;
 }
@@ -71,13 +67,26 @@ function ServerRoute({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (!user) {
-    return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/" replace />;
+  if (role !== 'server') return <Navigate to="/" replace />;
+  
+  return <>{children}</>;
+}
+
+// Kitchen-only route
+function KitchenRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, role, roleLoading } = useAuth();
+  
+  if (isLoading || roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
   
-  if (role !== 'server') {
-    return <Navigate to="/" replace />;
-  }
+  if (!user) return <Navigate to="/" replace />;
+  if (role !== 'kitchen') return <Navigate to="/" replace />;
   
   return <>{children}</>;
 }
@@ -93,15 +102,11 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // If user is logged in with role, redirect to appropriate dashboard
   if (user && role) {
-    if (role === 'manager') {
-      return <Navigate to="/manager" replace />;
-    } else if (role === 'server') {
-      return <Navigate to="/server" replace />;
-    } else {
-      return <Navigate to="/menu" replace />;
-    }
+    if (role === 'manager') return <Navigate to="/manager" replace />;
+    if (role === 'server') return <Navigate to="/server" replace />;
+    if (role === 'kitchen') return <Navigate to="/kitchen" replace />;
+    return <Navigate to="/menu" replace />;
   }
   
   return <>{children}</>;
@@ -117,6 +122,7 @@ const AppRoutes = () => (
     <Route path="/order-history" element={<ProtectedRoute><OrderHistoryPage /></ProtectedRoute>} />
     <Route path="/manager" element={<ManagerRoute><ManagerDashboard /></ManagerRoute>} />
     <Route path="/server" element={<ServerRoute><ServerDashboard /></ServerRoute>} />
+    <Route path="/kitchen" element={<KitchenRoute><KitchenDashboard /></KitchenRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );

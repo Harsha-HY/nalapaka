@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Edit2, Loader2, Trash2, Plus, Minus } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTableNumber } from '@/hooks/useTableNumber';
 import { useOrders } from '@/hooks/useOrders';
 import { useLockedSeats } from '@/hooks/useLockedSeats';
+import { useProfile } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,11 +17,12 @@ import { TableSeatModal } from '@/components/TableSeatModal';
 import { toast } from 'sonner';
 
 export default function CheckoutPage() {
-  const { items, totalAmount, clearCart } = useCart();
+  const { items, totalAmount, clearCart, updateQuantity, removeItem } = useCart();
   const { t, language } = useLanguage();
   const { tableNumber, saveTableNumber } = useTableNumber();
   const { currentOrder, createOrder, addItemsToOrder } = useOrders();
   const { lockSeats } = useLockedSeats();
+  const { profile, upsertProfile } = useProfile();
   const navigate = useNavigate();
 
   const [customerName, setCustomerName] = useState('');
@@ -30,13 +32,22 @@ export default function CheckoutPage() {
   const [showTableSeatModal, setShowTableSeatModal] = useState(false);
   const [selectedOrderType, setSelectedOrderType] = useState<'dine-in' | 'parcel' | null>(null);
   const [pendingOrderData, setPendingOrderData] = useState<any>(null);
+  const [autoFilled, setAutoFilled] = useState(false);
 
-  // Check if there's an active order to add items to
   const hasActiveOrder = currentOrder && 
     currentOrder.order_stage !== 'completed' &&
     !currentOrder.payment_confirmed;
 
-  // Pre-fill customer details from active order
+  // Auto-fill from profile
+  useEffect(() => {
+    if (profile && !autoFilled) {
+      if (profile.name) setCustomerName(profile.name);
+      if (profile.phone_number) setPhoneNumber(profile.phone_number);
+      setAutoFilled(true);
+    }
+  }, [profile, autoFilled]);
+
+  // Pre-fill from active order
   useEffect(() => {
     if (hasActiveOrder && currentOrder) {
       setCustomerName(currentOrder.customer_name);
@@ -57,8 +68,12 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Save profile for auto-fill next time
+    if (customerName.trim() && phoneNumber.trim()) {
+      upsertProfile(customerName.trim(), phoneNumber.trim());
+    }
+
     if (hasActiveOrder && currentOrder) {
-      // Add items to existing order
       setIsSubmitting(true);
       try {
         const orderedItems = items.map((item) => ({
@@ -78,7 +93,6 @@ export default function CheckoutPage() {
         setIsSubmitting(false);
       }
     } else {
-      // New order - show order type selection
       const orderedItems = items.map((item) => ({
         name: item.name,
         nameKn: item.nameKn,
@@ -101,10 +115,8 @@ export default function CheckoutPage() {
     setSelectedOrderType(orderType);
 
     if (orderType === 'parcel') {
-      // For parcel, proceed directly without table number
       await createOrderWithType('parcel', 'PARCEL', []);
     } else {
-      // For dine-in, ask for table number and seats
       setShowTableSeatModal(true);
     }
   };
@@ -128,7 +140,6 @@ export default function CheckoutPage() {
 
       const newOrder = await createOrder(orderData);
 
-      // Lock seats for dine-in orders
       if (orderType === 'dine-in' && table !== 'PARCEL' && newOrder && seats.length > 0) {
         await lockSeats(table, seats, newOrder.id);
       }
@@ -149,7 +160,7 @@ export default function CheckoutPage() {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background border-b">
         <div className="container py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/cart')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/menu')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-xl font-bold">
@@ -182,50 +193,6 @@ export default function CheckoutPage() {
               </CardContent>
             </Card>
           )}
-
-          {/* New items summary */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg">
-                {hasActiveOrder 
-                  ? (language === 'kn' ? 'ಹೊಸ ಐಟಂಗಳು' : 'New Items')
-                  : t('items')
-                }
-              </CardTitle>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/cart')}
-              >
-                <Edit2 className="h-4 w-4 mr-1" />
-                {t('edit')}
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {items.map((item) => (
-                  <div key={item.id} className="flex justify-between text-sm">
-                    <span>
-                      {language === 'kn' ? item.nameKn : item.name} × {item.quantity}
-                    </span>
-                    <span className="font-medium">₹{item.price * item.quantity}</span>
-                  </div>
-                ))}
-                <Separator className="my-2" />
-                <div className="flex justify-between font-bold text-lg">
-                  <span>{hasActiveOrder ? (language === 'kn' ? 'ಹೊಸ ಐಟಂ ಒಟ್ಟು' : 'New items total') : t('total')}</span>
-                  <span className="text-primary">₹{totalAmount}</span>
-                </div>
-                {hasActiveOrder && currentOrder && (
-                  <div className="flex justify-between font-bold text-lg text-primary">
-                    <span>{language === 'kn' ? 'ಹೊಸ ಒಟ್ಟು' : 'New Grand Total'}</span>
-                    <span>₹{currentOrder.total_amount + totalAmount}</span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Customer details - only for new orders */}
           {!hasActiveOrder && (
@@ -264,6 +231,76 @@ export default function CheckoutPage() {
             </Card>
           )}
 
+          {/* Cart items with edit capability */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">
+                {hasActiveOrder 
+                  ? (language === 'kn' ? 'ಹೊಸ ಐಟಂಗಳು' : 'New Items')
+                  : t('items')
+                }
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {items.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm truncate">
+                        {language === 'kn' ? item.nameKn : item.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">₹{item.price}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm text-primary">₹{item.price * item.quantity}</span>
+                      <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-5 text-center text-sm font-semibold">{item.quantity}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => removeItem(item.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                <Separator className="my-2" />
+                <div className="flex justify-between font-bold text-lg">
+                  <span>{hasActiveOrder ? (language === 'kn' ? 'ಹೊಸ ಐಟಂ ಒಟ್ಟು' : 'New items total') : t('total')}</span>
+                  <span className="text-primary">₹{totalAmount}</span>
+                </div>
+                {hasActiveOrder && currentOrder && (
+                  <div className="flex justify-between font-bold text-lg text-primary">
+                    <span>{language === 'kn' ? 'ಹೊಸ ಒಟ್ಟು' : 'New Grand Total'}</span>
+                    <span>₹{currentOrder.total_amount + totalAmount}</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Submit button */}
           <Button
             type="submit"
@@ -281,13 +318,11 @@ export default function CheckoutPage() {
         </form>
       </main>
 
-      {/* Order Type Modal */}
       <OrderTypeModal
         open={showOrderTypeModal}
         onSelect={handleOrderTypeSelect}
       />
 
-      {/* Table and Seat Selection Modal for Dine-in */}
       <TableSeatModal
         open={showTableSeatModal}
         onSave={handleTableSeatSave}

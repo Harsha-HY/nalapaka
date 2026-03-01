@@ -177,7 +177,7 @@ export function useOrders() {
     if (error) throw error;
   };
 
-  // Server accepts an order — this is the FINAL confirmation
+  // Server accepts an order — informational, not final
   const serverAcceptOrder = async (orderId: string, serverUserId: string, serverName: string) => {
     const { error } = await supabase
       .from('orders')
@@ -185,9 +185,34 @@ export function useOrders() {
         accepted_by_server_id: serverUserId,
         accepted_by_server_name: serverName,
         server_accepted_at: new Date().toISOString(),
+      } as any)
+      .eq('id', orderId);
+
+    if (error) throw error;
+  };
+
+  // Kitchen accepts an order — this is the FINAL confirmation
+  const kitchenAcceptOrder = async (orderId: string, kitchenName: string) => {
+    const { error } = await supabase
+      .from('orders')
+      .update({
+        accepted_by_kitchen_name: kitchenName,
+        kitchen_accepted_at: new Date().toISOString(),
         order_status: 'Confirmed',
         confirmed_at: new Date().toISOString(),
         order_stage: 'order_confirmed',
+      } as any)
+      .eq('id', orderId);
+
+    if (error) throw error;
+  };
+
+  // Kitchen marks order as prepared
+  const kitchenMarkPrepared = async (orderId: string) => {
+    const { error } = await supabase
+      .from('orders')
+      .update({
+        kitchen_prepared_at: new Date().toISOString(),
       } as any)
       .eq('id', orderId);
 
@@ -347,6 +372,8 @@ export function useOrders() {
     createOrder,
     addItemsToOrder,
     serverAcceptOrder,
+    kitchenAcceptOrder,
+    kitchenMarkPrepared,
     confirmOrder,
     cancelOrder,
     deleteOrder,

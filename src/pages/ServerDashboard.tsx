@@ -297,6 +297,7 @@ export default function ServerDashboard() {
                     quantity: number;
                     price: number;
                   }>;
+                  const extraItems = (order as any).extra_items || [];
                   return (
                     <Card key={order.id} className="shadow-soft border-0">
                       <CardContent className="p-4">
@@ -314,16 +315,27 @@ export default function ServerDashboard() {
                         </div>
                         <Separator className="my-2" />
                         <div className="text-sm space-y-1">
-                          {orderedItems.slice(0, 3).map((item, idx) => (
+                          {orderedItems.map((item, idx) => (
                             <div key={idx} className="flex justify-between text-muted-foreground">
                               <span>{item.name} × {item.quantity}</span>
                               <span>₹{item.price * item.quantity}</span>
                             </div>
                           ))}
-                          {orderedItems.length > 3 && (
-                            <p className="text-xs text-muted-foreground">+{orderedItems.length - 3} more items</p>
-                          )}
                         </div>
+                        {extraItems.length > 0 && (
+                          <>
+                            <Separator className="my-2" />
+                            <p className="text-xs font-semibold text-muted-foreground mb-1">Extra Items</p>
+                            <div className="text-sm space-y-1">
+                              {extraItems.map((item: any, idx: number) => (
+                                <div key={idx} className="flex justify-between text-muted-foreground">
+                                  <span>{item.name} × {item.quantity}</span>
+                                  {item.price && <span>₹{item.price * item.quantity}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
                         <div className="flex justify-between font-bold mt-2 pt-2 border-t">
                           <span>Total</span>
                           <span>₹{order.total_amount}</span>
@@ -370,6 +382,7 @@ function ServerOrderCard({
 
   const isPending = order.order_status === 'Pending';
   const isConfirmed = order.order_status === 'Confirmed';
+  const kitchenAccepted = (order as any).accepted_by_kitchen_name;
   const orderType = order.order_type || 'dine-in';
   const seats = (order as any).seats || [];
   const waitTimeMinutes = order.wait_time_minutes;
@@ -433,6 +446,16 @@ function ServerOrderCard({
             <UserCheck className="h-4 w-4" />
             <span className="text-sm font-medium">
               {isAcceptedByMe ? 'You accepted this order' : `Accepted by ${acceptedByServerName}`}
+            </span>
+          </div>
+        )}
+
+        {/* Kitchen Confirmation Status */}
+        {kitchenAccepted && (
+          <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-primary/20 text-primary">
+            <CheckCircle className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              Kitchen confirmed order – proceed service
             </span>
           </div>
         )}
