@@ -585,6 +585,16 @@ function PendingOrderCard({
           </div>
         )}
 
+        {/* Kitchen Confirmation Status */}
+        {(order as any).accepted_by_kitchen_name && (
+          <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-primary/20 text-primary">
+            <CheckCircle className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              Order confirmed by Kitchen – Table {order.table_number}
+            </span>
+          </div>
+        )}
+
         {/* Customer Info */}
         <div className="flex items-start justify-between">
           <div>

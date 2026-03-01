@@ -2,13 +2,14 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 
-type UserRole = 'manager' | 'server' | 'customer';
+type UserRole = 'manager' | 'server' | 'customer' | 'kitchen';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isManager: boolean;
   isServer: boolean;
+  isKitchen: boolean;
   role: UserRole | null;
   isLoading: boolean;
   roleLoading: boolean;
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isManager = role === 'manager';
   const isServer = role === 'server';
+  const isKitchen = role === 'kitchen';
 
   // Function to fetch user role from backend
   const fetchUserRole = async (userId: string): Promise<UserRole | null> => {
@@ -129,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         isManager,
         isServer,
+        isKitchen,
         role,
         isLoading,
         roleLoading,
