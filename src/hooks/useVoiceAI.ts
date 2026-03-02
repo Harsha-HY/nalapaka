@@ -20,20 +20,16 @@ export function useVoiceAI() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef<any>(null);
-  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const navigate = useNavigate();
   const { addItem, removeItem, items } = useCart();
 
   // Find menu item by fuzzy name match
   const findMenuItem = useCallback((name: string) => {
     const lower = name.toLowerCase().trim();
-    // Exact match first
     let match = menuItems.find(m => m.name.toLowerCase() === lower);
     if (match) return match;
-    // Partial match
     match = menuItems.find(m => m.name.toLowerCase().includes(lower) || lower.includes(m.name.toLowerCase()));
     if (match) return match;
-    // Word match
     const words = lower.split(' ');
     match = menuItems.find(m => {
       const mWords = m.name.toLowerCase().split(' ');
@@ -107,7 +103,6 @@ export function useVoiceAI() {
         break;
       case 'select_table':
       case 'select_seat':
-        // These will be handled during checkout
         speak(action.response_text || 'Noted. Please confirm during checkout.');
         toast.info(action.response_text || `Table/seat selection noted`);
         break;
@@ -140,10 +135,8 @@ export function useVoiceAI() {
 
       const actions: VoiceAction[] = data?.actions || [];
       
-      // Execute actions sequentially
       for (const action of actions) {
         await executeAction(action);
-        // Small delay between multiple actions
         if (actions.length > 1) {
           await new Promise(r => setTimeout(r, 300));
         }
@@ -157,7 +150,7 @@ export function useVoiceAI() {
     }
   }, [executeAction, speak]);
 
-  // Start listening
+  // Start listening - single shot mode (no continuous, no duplication)
   const startListening = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -166,33 +159,16 @@ export function useVoiceAI() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-IN'; // Supports English + Indian languages
-
-    let finalTranscript = '';
+    recognition.continuous = false; // Single utterance only
+    recognition.interimResults = false; // Only final results - no duplicates
+    recognition.lang = 'en-IN';
 
     recognition.onresult = (event: any) => {
-      let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += t + ' ';
-          // Reset silence timer on final result
-          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-          silenceTimerRef.current = setTimeout(() => {
-            // Process after 1.5s of silence
-            if (finalTranscript.trim()) {
-              const toProcess = finalTranscript.trim();
-              finalTranscript = '';
-              processTranscript(toProcess);
-            }
-          }, 1500);
-        } else {
-          interim = t;
-        }
+      const result = event.results[0]?.[0]?.transcript || '';
+      if (result.trim()) {
+        setTranscript(result);
+        processTranscript(result);
       }
-      setTranscript(finalTranscript + interim);
     };
 
     recognition.onerror = (event: any) => {
@@ -203,10 +179,14 @@ export function useVoiceAI() {
     };
 
     recognition.onend = () => {
-      // Auto-restart if still listening mode
-      if (isListening && recognitionRef.current) {
+      // Auto-restart for next command if still in listening mode
+      if (recognitionRef.current) {
         try {
-          recognitionRef.current.start();
+          setTimeout(() => {
+            if (recognitionRef.current) {
+              recognitionRef.current.start();
+            }
+          }, 300);
         } catch { /* ignore */ }
       }
     };
@@ -215,18 +195,15 @@ export function useVoiceAI() {
     recognition.start();
     setIsListening(true);
     toast.success('🎤 Voice AI active');
-  }, [processTranscript, isListening]);
+  }, [processTranscript]);
 
   // Stop listening
   const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.onend = null; // Prevent auto-restart
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
+    const ref = recognitionRef.current;
+    recognitionRef.current = null; // Clear ref first to prevent auto-restart
+    if (ref) {
+      ref.onend = null;
+      ref.stop();
     }
     setIsListening(false);
     setTranscript('');
@@ -245,11 +222,12 @@ export function useVoiceAI() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.onend = null;
-        recognitionRef.current.stop();
+      const ref = recognitionRef.current;
+      recognitionRef.current = null;
+      if (ref) {
+        ref.onend = null;
+        ref.stop();
       }
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       window.speechSynthesis?.cancel();
     };
   }, []);

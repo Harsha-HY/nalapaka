@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Loader2, Trash2, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, Loader2, Trash2, Plus, Minus, UtensilsCrossed, Package, AlertTriangle } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTableNumber } from '@/hooks/useTableNumber';
@@ -12,31 +12,34 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { OrderTypeModal } from '@/components/OrderTypeModal';
-import { TableSeatModal } from '@/components/TableSeatModal';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+const ALL_SEATS = ['A', 'B', 'C', 'D'];
 
 export default function CheckoutPage() {
   const { items, totalAmount, clearCart, updateQuantity, removeItem } = useCart();
   const { t, language } = useLanguage();
-  const { tableNumber, saveTableNumber } = useTableNumber();
+  const { saveTableNumber } = useTableNumber();
   const { currentOrder, createOrder, addItemsToOrder } = useOrders();
-  const { lockSeats } = useLockedSeats();
+  const { lockSeats, getLockedSeatsForTable, getAvailableSeats } = useLockedSeats();
   const { profile, upsertProfile } = useProfile();
   const navigate = useNavigate();
 
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showOrderTypeModal, setShowOrderTypeModal] = useState(false);
-  const [showTableSeatModal, setShowTableSeatModal] = useState(false);
   const [selectedOrderType, setSelectedOrderType] = useState<'dine-in' | 'parcel' | null>(null);
-  const [pendingOrderData, setPendingOrderData] = useState<any>(null);
+  const [tableNumber, setTableNumber] = useState('');
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [seatError, setSeatError] = useState<string | null>(null);
   const [autoFilled, setAutoFilled] = useState(false);
 
   const hasActiveOrder = currentOrder && 
     currentOrder.order_stage !== 'completed' &&
     !currentOrder.payment_confirmed;
+
+  const lockedSeats = tableNumber.trim() ? getLockedSeatsForTable(tableNumber.trim()) : [];
 
   // Auto-fill from profile
   useEffect(() => {
@@ -60,15 +63,46 @@ export default function CheckoutPage() {
     return null;
   }
 
+  const handleSeatToggle = (seat: string) => {
+    if (lockedSeats.includes(seat)) {
+      setSeatError(
+        language === 'kn' 
+          ? 'ಈ ಆಸನ ಈಗಾಗಲೇ ಆಕ್ರಮಿಸಲಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೊಂದು ಆಸನವನ್ನು ಆಯ್ಕೆಮಾಡಿ.' 
+          : 'This seat is already occupied. Please select another seat.'
+      );
+      return;
+    }
+    setSeatError(null);
+    setSelectedSeats(prev => 
+      prev.includes(seat) ? prev.filter(s => s !== seat) : [...prev, seat]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!hasActiveOrder && (!customerName.trim() || !phoneNumber.trim())) {
-      toast.error(language === 'kn' ? 'ಎಲ್ಲಾ ಕ್ಷೇತ್ರಗಳನ್ನು ಭರ್ತಿ ಮಾಡಿ' : 'Please fill in all fields');
-      return;
+    if (!hasActiveOrder) {
+      if (!customerName.trim() || !phoneNumber.trim()) {
+        toast.error(language === 'kn' ? 'ಎಲ್ಲಾ ಕ್ಷೇತ್ರಗಳನ್ನು ಭರ್ತಿ ಮಾಡಿ' : 'Please fill in all fields');
+        return;
+      }
+      if (!selectedOrderType) {
+        toast.error(language === 'kn' ? 'ಆರ್ಡರ್ ಪ್ರಕಾರವನ್ನು ಆಯ್ಕೆಮಾಡಿ' : 'Please select order type');
+        return;
+      }
+      if (selectedOrderType === 'dine-in') {
+        if (!tableNumber.trim()) {
+          toast.error(language === 'kn' ? 'ಟೇಬಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ' : 'Please enter table number');
+          return;
+        }
+        if (selectedSeats.length === 0) {
+          toast.error(language === 'kn' ? 'ಆಸನಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ' : 'Please select at least one seat');
+          return;
+        }
+      }
     }
 
-    // Save profile for auto-fill next time
+    // Save profile
     if (customerName.trim() && phoneNumber.trim()) {
       upsertProfile(customerName.trim(), phoneNumber.trim());
     }
@@ -77,10 +111,7 @@ export default function CheckoutPage() {
       setIsSubmitting(true);
       try {
         const orderedItems = items.map((item) => ({
-          name: item.name,
-          nameKn: item.nameKn,
-          quantity: item.quantity,
-          price: item.price,
+          name: item.name, nameKn: item.nameKn, quantity: item.quantity, price: item.price,
         }));
         await addItemsToOrder(currentOrder.id, orderedItems, totalAmount);
         toast.success(language === 'kn' ? 'ಐಟಂಗಳನ್ನು ಆರ್ಡರ್‌ಗೆ ಸೇರಿಸಲಾಗಿದೆ!' : 'Items added to your order!');
@@ -93,71 +124,46 @@ export default function CheckoutPage() {
         setIsSubmitting(false);
       }
     } else {
-      const orderedItems = items.map((item) => ({
-        name: item.name,
-        nameKn: item.nameKn,
-        quantity: item.quantity,
-        price: item.price,
-      }));
+      setIsSubmitting(true);
+      try {
+        const orderedItems = items.map((item) => ({
+          name: item.name, nameKn: item.nameKn, quantity: item.quantity, price: item.price,
+        }));
 
-      setPendingOrderData({
-        customer_name: customerName.trim(),
-        phone_number: phoneNumber.trim(),
-        ordered_items: orderedItems,
-        total_amount: totalAmount,
-      });
-      setShowOrderTypeModal(true);
-    }
-  };
+        const table = selectedOrderType === 'parcel' ? 'PARCEL' : tableNumber.trim();
+        const seats = selectedOrderType === 'parcel' ? [] : selectedSeats;
 
-  const handleOrderTypeSelect = async (orderType: 'dine-in' | 'parcel') => {
-    setShowOrderTypeModal(false);
-    setSelectedOrderType(orderType);
+        const orderData = {
+          customer_name: customerName.trim(),
+          phone_number: phoneNumber.trim(),
+          ordered_items: orderedItems,
+          total_amount: totalAmount,
+          order_type: selectedOrderType,
+          table_number: table,
+          seats,
+        };
 
-    if (orderType === 'parcel') {
-      await createOrderWithType('parcel', 'PARCEL', []);
-    } else {
-      setShowTableSeatModal(true);
-    }
-  };
+        const newOrder = await createOrder(orderData);
 
-  const handleTableSeatSave = async (table: string, seats: string[]) => {
-    setShowTableSeatModal(false);
-    saveTableNumber(table);
-    await createOrderWithType('dine-in', table, seats);
-  };
+        if (selectedOrderType === 'dine-in' && newOrder && seats.length > 0) {
+          saveTableNumber(table);
+          await lockSeats(table, seats, newOrder.id);
+        }
 
-  const createOrderWithType = async (orderType: 'dine-in' | 'parcel', table: string, seats: string[]) => {
-    setIsSubmitting(true);
-
-    try {
-      const orderData = {
-        ...pendingOrderData,
-        order_type: orderType,
-        table_number: table,
-        seats: seats,
-      };
-
-      const newOrder = await createOrder(orderData);
-
-      if (orderType === 'dine-in' && table !== 'PARCEL' && newOrder && seats.length > 0) {
-        await lockSeats(table, seats, newOrder.id);
+        toast.success(language === 'kn' ? 'ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!' : 'Order placed successfully!');
+        clearCart();
+        navigate('/order-status');
+      } catch (error) {
+        console.error('Error creating order:', error);
+        toast.error(language === 'kn' ? 'ಆರ್ಡರ್ ಸಲ್ಲಿಸಲು ವಿಫಲವಾಗಿದೆ' : 'Failed to place order. Please try again.');
+      } finally {
+        setIsSubmitting(false);
       }
-
-      toast.success(language === 'kn' ? 'ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!' : 'Order placed successfully!');
-      clearCart();
-      navigate('/order-status');
-    } catch (error) {
-      console.error('Error creating order:', error);
-      toast.error(language === 'kn' ? 'ಆರ್ಡರ್ ಸಲ್ಲಿಸಲು ವಿಫಲವಾಗಿದೆ' : 'Failed to place order. Please try again.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-40 bg-background border-b">
         <div className="container py-4 flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate('/menu')}>
@@ -214,7 +220,6 @@ export default function CheckoutPage() {
                     className="h-12"
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="phone-number">{t('phoneNumber')}</Label>
                   <Input
@@ -231,7 +236,115 @@ export default function CheckoutPage() {
             </Card>
           )}
 
-          {/* Cart items with edit capability */}
+          {/* Order Type - inline, only for new orders */}
+          {!hasActiveOrder && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {language === 'kn' ? 'ಆರ್ಡರ್ ಪ್ರಕಾರ' : 'Order Type'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    type="button"
+                    variant={selectedOrderType === 'dine-in' ? 'default' : 'outline'}
+                    className="h-16 flex flex-col items-center justify-center gap-1"
+                    onClick={() => {
+                      setSelectedOrderType('dine-in');
+                      setSelectedSeats([]);
+                      setSeatError(null);
+                    }}
+                  >
+                    <UtensilsCrossed className="h-5 w-5" />
+                    <span className="text-sm">{language === 'kn' ? 'ಡೈನ್-ಇನ್' : 'Dine-in'}</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectedOrderType === 'parcel' ? 'default' : 'outline'}
+                    className="h-16 flex flex-col items-center justify-center gap-1"
+                    onClick={() => {
+                      setSelectedOrderType('parcel');
+                      setTableNumber('');
+                      setSelectedSeats([]);
+                      setSeatError(null);
+                    }}
+                  >
+                    <Package className="h-5 w-5" />
+                    <span className="text-sm">{language === 'kn' ? 'ಪಾರ್ಸೆಲ್' : 'Parcel'}</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Table & Seat selection - only for dine-in */}
+          {!hasActiveOrder && selectedOrderType === 'dine-in' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {language === 'kn' ? 'ಟೇಬಲ್ ಮತ್ತು ಆಸನ' : 'Table & Seat'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="table-number">{language === 'kn' ? 'ಟೇಬಲ್ ಸಂಖ್ಯೆ' : 'Table Number'}</Label>
+                  <Input
+                    id="table-number"
+                    value={tableNumber}
+                    onChange={(e) => {
+                      setTableNumber(e.target.value);
+                      setSelectedSeats([]);
+                      setSeatError(null);
+                    }}
+                    placeholder={language === 'kn' ? 'ಟೇಬಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ' : 'Enter table number'}
+                    className="h-12 text-center text-xl"
+                  />
+                </div>
+
+                {tableNumber.trim() && (
+                  <div className="space-y-2">
+                    <Label>{language === 'kn' ? 'ಆಸನಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ' : 'Select Seats'}</Label>
+                    <div className="grid grid-cols-4 gap-3">
+                      {ALL_SEATS.map((seat) => {
+                        const isLocked = lockedSeats.includes(seat);
+                        const isSelected = selectedSeats.includes(seat);
+                        return (
+                          <Button
+                            key={seat}
+                            type="button"
+                            variant={isSelected ? 'default' : 'outline'}
+                            disabled={isLocked}
+                            onClick={() => handleSeatToggle(seat)}
+                            className={cn(
+                              'h-14 text-lg font-bold flex flex-col',
+                              isLocked && 'opacity-50 bg-muted cursor-not-allowed',
+                              isSelected && 'ring-2 ring-primary ring-offset-2'
+                            )}
+                          >
+                            <span className={isLocked ? 'line-through' : ''}>{seat}</span>
+                            {isLocked && (
+                              <span className="text-[10px] font-normal">
+                                {language === 'kn' ? 'ಆಕ್ರಮಿತ' : 'Taken'}
+                              </span>
+                            )}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    {seatError && (
+                      <div className="p-2 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+                        <p className="text-xs text-destructive">{seatError}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Cart items */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">
@@ -254,33 +367,18 @@ export default function CheckoutPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm text-primary">₹{item.price * item.quantity}</span>
                       <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        >
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}>
                           <Minus className="h-3 w-3" />
                         </Button>
                         <span className="w-5 text-center text-sm font-semibold">{item.quantity}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        >
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}>
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => removeItem(item.id)}
-                      >
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                        onClick={() => removeItem(item.id)}>
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
@@ -301,34 +399,18 @@ export default function CheckoutPage() {
             </CardContent>
           </Card>
 
-          {/* Submit button */}
-          <Button
-            type="submit"
-            className="w-full h-14 text-lg"
-            disabled={isSubmitting}
-          >
+          {/* Submit */}
+          <Button type="submit" className="w-full h-14 text-lg" disabled={isSubmitting}>
             {isSubmitting ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : hasActiveOrder ? (
               language === 'kn' ? 'ಆರ್ಡರ್‌ಗೆ ಐಟಂಗಳನ್ನು ಸೇರಿಸಿ' : 'Add Items to Order'
             ) : (
-              t('proceedOrder')
+              language === 'kn' ? 'ಆರ್ಡರ್ ಮಾಡಿ' : 'Place Order'
             )}
           </Button>
         </form>
       </main>
-
-      <OrderTypeModal
-        open={showOrderTypeModal}
-        onSelect={handleOrderTypeSelect}
-      />
-
-      <TableSeatModal
-        open={showTableSeatModal}
-        onSave={handleTableSeatSave}
-        onClose={() => setShowTableSeatModal(false)}
-        showCloseButton={true}
-      />
     </div>
   );
 }
