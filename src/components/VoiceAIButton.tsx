@@ -9,7 +9,7 @@ export function VoiceAIButton() {
     <>
       {/* Transcript display */}
       {(transcript || isProcessing) && (
-        <div className="fixed bottom-24 right-4 z-50 max-w-[280px] bg-card border border-border rounded-xl p-3 shadow-lg">
+        <div className="fixed bottom-36 right-4 z-50 max-w-[280px] bg-card border border-border rounded-xl p-3 shadow-lg">
           {isProcessing ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -21,11 +21,11 @@ export function VoiceAIButton() {
         </div>
       )}
 
-      {/* Floating mic button */}
+      {/* Floating mic button - positioned above cart */}
       <button
         onClick={toggleListening}
         className={cn(
-          "fixed bottom-6 right-4 z-50 h-14 w-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-200",
+          "fixed bottom-24 right-4 z-50 h-14 w-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-200",
           isListening
             ? "bg-destructive text-destructive-foreground animate-pulse"
             : "bg-primary text-primary-foreground hover:opacity-90"
