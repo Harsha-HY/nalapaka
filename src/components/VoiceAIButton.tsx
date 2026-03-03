@@ -7,9 +7,9 @@ export function VoiceAIButton() {
 
   return (
     <>
-      {/* Transcript display */}
+      {/* Transcript display - positioned above mic button */}
       {(transcript || isProcessing) && (
-        <div className="fixed bottom-36 right-4 z-50 max-w-[280px] bg-card border border-border rounded-xl p-3 shadow-lg">
+        <div className="fixed bottom-40 right-4 z-50 max-w-[280px] bg-card border border-border rounded-xl p-3 shadow-lg">
           {isProcessing ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
