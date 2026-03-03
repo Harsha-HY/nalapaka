@@ -6,7 +6,8 @@ import {
   Clock, 
   LogOut,
   User,
-  ChefHat
+  ChefHat,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders, Order } from '@/hooks/useOrders';
@@ -22,7 +23,7 @@ type KitchenSection = 'active' | 'prepared';
 
 export default function KitchenDashboard() {
   const { signOut, user } = useAuth();
-  const { orders, isLoading, refreshOrders, kitchenAcceptOrder, kitchenMarkPrepared } = useOrders();
+  const { orders, isLoading, refreshOrders, kitchenAcceptOrder, kitchenMarkPrepared, cleanupPreparedOlderThan24Hours } = useOrders();
   const { currentKitchen } = useKitchenStaff();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<KitchenSection>('active');
@@ -36,28 +37,31 @@ export default function KitchenDashboard() {
     }
   }, [currentKitchen, navigate]);
 
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
+  useEffect(() => {
+    cleanupPreparedOlderThan24Hours().catch(() => {
+      // no-op: dashboard still works even if cleanup fails
+    });
+  }, [cleanupPreparedOlderThan24Hours]);
+
+  const last24HoursAgo = useMemo(() => {
+    return new Date(Date.now() - 24 * 60 * 60 * 1000);
   }, []);
 
-  const todayOrders = useMemo(() => {
-    return orders.filter(o => {
+  const recentOrders = useMemo(() => {
+    return orders.filter((o) => {
       const orderDate = new Date(o.created_at);
-      orderDate.setHours(0, 0, 0, 0);
-      return orderDate.getTime() === today.getTime();
+      return orderDate >= last24HoursAgo && !(o as any).archived_at;
     });
-  }, [orders, today]);
+  }, [orders, last24HoursAgo]);
 
   // Active = not yet prepared (pending or confirmed, not payment_confirmed)
-  const activeOrders = todayOrders.filter(o => 
+  const activeOrders = recentOrders.filter(o => 
     !o.payment_confirmed && 
     o.order_status !== 'Cancelled' &&
     !(o as any).kitchen_prepared_at
   );
 
-  const preparedOrders = todayOrders.filter(o => 
+  const preparedOrders = recentOrders.filter(o => 
     (o as any).kitchen_prepared_at && !o.payment_confirmed
   );
 
@@ -279,6 +283,16 @@ function KitchenOrderCard({ order, currentKitchenName, onAccept, onMarkPrepared 
         {/* Extra Items */}
         {extraItems.length > 0 && (
           <OrderExtraItemsBadge extraItems={extraItems.map((e: any) => ({ ...e, price: undefined }))} />
+        )}
+
+        {/* Server Accepted Notification */}
+        {(order as any).accepted_by_server_name && (
+          <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-primary/10 text-primary">
+            <Bell className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              Server {(order as any).accepted_by_server_name} accepted this order
+            </span>
+          </div>
         )}
 
         {/* Kitchen Accepted */}

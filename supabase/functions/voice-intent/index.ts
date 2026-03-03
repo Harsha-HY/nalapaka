@@ -42,21 +42,29 @@ Common Kannada phrases:
 
 Return a JSON array of actions. Each action must have this structure:
 {
-  "action": "add_item" | "remove_item" | "navigate_menu" | "navigate_cart" | "proceed_order" | "select_table" | "select_seat" | "pay_cash" | "pay_online" | "finish_order" | "unknown",
+  "action": "add_item" | "remove_item" | "navigate_menu" | "navigate_cart" | "proceed_order" | "select_table" | "select_seat" | "select_block" | "set_customer_name" | "set_phone_number" | "set_order_type" | "pay_cash" | "pay_online" | "finish_order" | "unknown",
   "item_name": "exact menu item name from the list above or empty string",
   "quantity": number (default 1),
   "table_number": "string or empty",
   "seat_blocks": ["array of seat letters or empty"],
   "dining_type": "dine-in" | "parcel" | "",
+  "customer_name": "string or empty",
+  "phone_number": "10 digit string or empty",
   "response_text": "brief confirmation in same language user spoke"
 }
 
 IMPORTANT:
 - Match item names fuzzy (e.g. "dosa" = "Plain Dosa", "masala dosa" = "Masala Dosa", "paneer" = "Paneer Butter Masala")
+- For voice form fill commands:
+  - "my name is Arsha" => action "set_customer_name" and customer_name="Arsha"
+  - "my number is 9876543210" => action "set_phone_number" and phone_number="9876543210"
+  - "dine in" / "parcel" => action "set_order_type" and dining_type accordingly
 - If user says multiple things like "add 2 dosa and proceed", return multiple actions in array
 - For quantity, detect numbers in any language (e.g. "two" = 2, "eradu" = 2)
+- For table+seat phrases like "table 3 block A" return select_table then select_seat/select_block actions
+- For fill actions, keep response_text empty (no greeting)
 - Return ONLY the JSON array, nothing else
-- If you can't understand, return [{"action":"unknown","item_name":"","quantity":1,"table_number":"","seat_blocks":[],"dining_type":"","response_text":"Sorry, I didn't understand. Please try again."}]`;
+- If you can't understand, return [{"action":"unknown","item_name":"","quantity":1,"table_number":"","seat_blocks":[],"dining_type":"","customer_name":"","phone_number":"","response_text":"Sorry, I didn't understand. Please try again."}]`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
