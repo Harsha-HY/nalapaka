@@ -102,6 +102,11 @@ export function printBill(order: Order) {
     quantity: number;
     price: number;
   }>;
+  const extraItems = ((order as any).extra_items || []) as Array<{
+    name: string;
+    quantity: number;
+    price?: number;
+  }>;
 
   const seats = (order as any).seats || [];
   const seatsDisplay = seats.length > 0 ? seats.join(', ') : '';
@@ -143,6 +148,16 @@ export function printBill(order: Order) {
           <span>₹${item.price * item.quantity}</span>
         </div>
       `).join('')}
+      ${extraItems.length > 0 ? `
+        <div class="divider"></div>
+        <div class="info"><strong>Extra Items</strong></div>
+        ${extraItems.map(item => `
+          <div class="item">
+            <span>${item.name} x ${item.quantity}</span>
+            <span>${item.price ? `₹${item.price * item.quantity}` : '-'}</span>
+          </div>
+        `).join('')}
+      ` : ''}
       <div class="divider"></div>
       <div class="total">
         <span>TOTAL</span>

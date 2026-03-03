@@ -177,21 +177,26 @@ export function useOrders() {
     if (error) throw error;
   };
 
-  // Server accepts an order — informational, not final
+  // Server accepts an order — marks server assignment and notifies downstream dashboards
   const serverAcceptOrder = async (orderId: string, serverUserId: string, serverName: string) => {
+    const nowIso = new Date().toISOString();
+
     const { error } = await supabase
       .from('orders')
       .update({
         accepted_by_server_id: serverUserId,
         accepted_by_server_name: serverName,
-        server_accepted_at: new Date().toISOString(),
+        server_accepted_at: nowIso,
+        order_status: 'Confirmed',
+        confirmed_at: nowIso,
+        order_stage: 'order_confirmed',
       } as any)
       .eq('id', orderId);
 
     if (error) throw error;
   };
 
-  // Kitchen accepts an order — this is the FINAL confirmation
+  // Kitchen accepts an order — final kitchen acknowledgement for preparation
   const kitchenAcceptOrder = async (orderId: string, kitchenName: string) => {
     const { error } = await supabase
       .from('orders')
@@ -348,6 +353,20 @@ export function useOrders() {
     await fetchOrders();
   };
 
+  const cleanupPreparedOlderThan24Hours = async () => {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    const { error } = await supabase
+      .from('orders')
+      .update({ archived_at: new Date().toISOString() } as any)
+      .not('kitchen_prepared_at', 'is', null)
+      .lt('kitchen_prepared_at', cutoff)
+      .is('archived_at', null)
+      .eq('payment_confirmed', false);
+
+    if (error) throw error;
+  };
+
   // Get today's completed orders for summary
   const getTodayStats = () => {
     const today = new Date();
@@ -384,6 +403,7 @@ export function useOrders() {
     updateOrderStage,
     deleteDayHistory,
     archiveTodayOrders,
+    cleanupPreparedOlderThan24Hours,
     getTodayStats,
     refreshOrders: fetchOrders,
   };
