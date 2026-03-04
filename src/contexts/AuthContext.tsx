@@ -48,37 +48,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Safety timeout - never stay loading more than 5 seconds
+    // Safety timeout - never stay loading more than 3 seconds
     const timeout = setTimeout(() => {
       if (isLoading) {
         console.warn('Auth loading timeout - forcing complete');
         setIsLoading(false);
       }
-    }, 5000);
+    }, 3000);
 
-    // Single initialization via onAuthStateChange
+    // Get existing session first for fast load
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      if (existingSession?.user) {
+        setSession(existingSession);
+        setUser(existingSession.user);
+        setRoleLoading(true);
+        fetchUserRole(existingSession.user.id).then((userRole) => {
+          setRole(userRole);
+          setRoleLoading(false);
+          setIsLoading(false);
+          initialized.current = true;
+        });
+      } else {
+        setIsLoading(false);
+        initialized.current = true;
+      }
+    });
+
+    // Listen for future auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      console.log('Auth event:', event);
+      if (event === 'SIGNED_IN' && !initialized.current) return; // skip duplicate of getSession
 
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+      if (event === 'SIGNED_IN') {
         setSession(newSession);
         setUser(newSession?.user ?? null);
-
         if (newSession?.user) {
           setRoleLoading(true);
           const userRole = await fetchUserRole(newSession.user.id);
           setRole(userRole);
           setRoleLoading(false);
-        } else {
-          setRole(null);
         }
-        setIsLoading(false);
-        initialized.current = true;
       } else if (event === 'SIGNED_OUT') {
         setSession(null);
         setUser(null);
         setRole(null);
-        setIsLoading(false);
       } else if (event === 'TOKEN_REFRESHED') {
         setSession(newSession);
         setUser(newSession?.user ?? null);

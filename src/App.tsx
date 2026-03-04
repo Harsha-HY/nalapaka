@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import { VoiceAIButton } from "@/components/VoiceAIButton";
+
 import AuthPage from "./pages/AuthPage";
 import MenuPage from "./pages/MenuPage";
 import CartPage from "./pages/CartPage";
@@ -113,19 +113,8 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function CustomerVoiceWrapper({ children }: { children: React.ReactNode }) {
-  const { user, role } = useAuth();
-  const isCustomer = user && role === 'customer';
-  return (
-    <>
-      {children}
-      {isCustomer && <VoiceAIButton />}
-    </>
-  );
-}
-
 const AppRoutes = () => (
-  <CustomerVoiceWrapper>
+  <>
     <Routes>
       <Route path="/" element={<PublicRoute><AuthPage /></PublicRoute>} />
       <Route path="/menu" element={<ProtectedRoute><MenuPage /></ProtectedRoute>} />
@@ -138,7 +127,7 @@ const AppRoutes = () => (
       <Route path="/kitchen" element={<KitchenRoute><KitchenDashboard /></KitchenRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
-  </CustomerVoiceWrapper>
+  </>
 );
 
 const App = () => (
