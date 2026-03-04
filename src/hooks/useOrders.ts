@@ -33,17 +33,10 @@ export function useOrders() {
     
     setIsLoading(true);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
-      
-      // Customers only need their own orders — much faster query
-      if (!isManager) {
-        query = query.eq('user_id', user.id).limit(20);
-      }
-
-      const { data, error } = await query;
       
       if (error) throw error;
       setOrders((data || []) as Order[]);
@@ -67,7 +60,7 @@ export function useOrders() {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Subscribe to realtime updates — stable subscription, no dependency on currentOrder
+  // Subscribe to realtime updates
   useEffect(() => {
     if (!user) return;
 
@@ -84,25 +77,21 @@ export function useOrders() {
           if (payload.eventType === 'INSERT') {
             setOrders((prev) => [payload.new as Order, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
-            const updated = payload.new as Order;
             setOrders((prev) =>
               prev.map((order) =>
-                order.id === updated.id ? updated : order
+                order.id === (payload.new as Order).id ? (payload.new as Order) : order
               )
             );
-            // Update current order using functional setter to avoid stale ref
-            setCurrentOrder((prev) => {
-              if (prev?.id === updated.id) {
-                // Trigger haptic feedback for confirmation
-                if (updated.order_status === 'Confirmed' && prev.order_status !== 'Confirmed') {
-                  if ('vibrate' in navigator) {
-                    navigator.vibrate([100, 50, 100]);
-                  }
+            // Update current order if it's the one being updated
+            if (currentOrder?.id === (payload.new as Order).id) {
+              setCurrentOrder(payload.new as Order);
+              // Trigger haptic feedback for confirmation
+              if ((payload.new as Order).order_status === 'Confirmed') {
+                if ('vibrate' in navigator) {
+                  navigator.vibrate([100, 50, 100]);
                 }
-                return updated;
               }
-              return prev;
-            });
+            }
           } else if (payload.eventType === 'DELETE') {
             setOrders((prev) => prev.filter((order) => order.id !== (payload.old as Order).id));
           }
@@ -113,7 +102,7 @@ export function useOrders() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, currentOrder?.id]);
 
   const createOrder = async (orderData: Omit<OrderInsert, 'user_id'> & { 
     order_type?: 'dine-in' | 'parcel';
@@ -188,47 +177,17 @@ export function useOrders() {
     if (error) throw error;
   };
 
-  // Server accepts an order — marks server assignment and notifies downstream dashboards
+  // Server accepts an order — this is the FINAL confirmation
   const serverAcceptOrder = async (orderId: string, serverUserId: string, serverName: string) => {
-    const nowIso = new Date().toISOString();
-
     const { error } = await supabase
       .from('orders')
       .update({
         accepted_by_server_id: serverUserId,
         accepted_by_server_name: serverName,
-        server_accepted_at: nowIso,
-        order_status: 'Confirmed',
-        confirmed_at: nowIso,
-        order_stage: 'order_confirmed',
-      } as any)
-      .eq('id', orderId);
-
-    if (error) throw error;
-  };
-
-  // Kitchen accepts an order — final kitchen acknowledgement for preparation
-  const kitchenAcceptOrder = async (orderId: string, kitchenName: string) => {
-    const { error } = await supabase
-      .from('orders')
-      .update({
-        accepted_by_kitchen_name: kitchenName,
-        kitchen_accepted_at: new Date().toISOString(),
+        server_accepted_at: new Date().toISOString(),
         order_status: 'Confirmed',
         confirmed_at: new Date().toISOString(),
         order_stage: 'order_confirmed',
-      } as any)
-      .eq('id', orderId);
-
-    if (error) throw error;
-  };
-
-  // Kitchen marks order as prepared
-  const kitchenMarkPrepared = async (orderId: string) => {
-    const { error } = await supabase
-      .from('orders')
-      .update({
-        kitchen_prepared_at: new Date().toISOString(),
       } as any)
       .eq('id', orderId);
 
@@ -364,20 +323,6 @@ export function useOrders() {
     await fetchOrders();
   };
 
-  const cleanupPreparedOlderThan24Hours = async () => {
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-    const { error } = await supabase
-      .from('orders')
-      .update({ archived_at: new Date().toISOString() } as any)
-      .not('kitchen_prepared_at', 'is', null)
-      .lt('kitchen_prepared_at', cutoff)
-      .is('archived_at', null)
-      .eq('payment_confirmed', false);
-
-    if (error) throw error;
-  };
-
   // Get today's completed orders for summary
   const getTodayStats = () => {
     const today = new Date();
@@ -402,8 +347,6 @@ export function useOrders() {
     createOrder,
     addItemsToOrder,
     serverAcceptOrder,
-    kitchenAcceptOrder,
-    kitchenMarkPrepared,
     confirmOrder,
     cancelOrder,
     deleteOrder,
@@ -414,7 +357,6 @@ export function useOrders() {
     updateOrderStage,
     deleteDayHistory,
     archiveTodayOrders,
-    cleanupPreparedOlderThan24Hours,
     getTodayStats,
     refreshOrders: fetchOrders,
   };

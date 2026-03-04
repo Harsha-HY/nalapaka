@@ -1,10 +1,5 @@
 import { Order } from '@/hooks/useOrders';
 
-const escapeHtml = (str: string): string =>
-  String(str).replace(/[&<>"']/g, (m) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m] || m)
-  );
-
 interface KitchenSlipItem {
   name: string;
   nameKn: string;
@@ -72,14 +67,14 @@ export function printKitchenSlip(
       
       ${orderType === 'parcel' 
         ? '<div class="info">📦 PARCEL</div>' 
-        : `<div class="info">🪑 TABLE ${escapeHtml(order.table_number)} | SEATS: ${escapeHtml(seatsDisplay)}</div>`
+        : `<div class="info">🪑 TABLE ${order.table_number} | SEATS: ${seatsDisplay}</div>`
       }
       
       <div class="divider"></div>
       
       ${items.map(item => `
         <div class="item">
-          <span class="item-name">${escapeHtml(item.name)}</span>
+          <span class="item-name">${item.name}</span>
           <span>× ${item.quantity}</span>
         </div>
       `).join('')}
@@ -106,11 +101,6 @@ export function printBill(order: Order) {
     nameKn: string;
     quantity: number;
     price: number;
-  }>;
-  const extraItems = ((order as any).extra_items || []) as Array<{
-    name: string;
-    quantity: number;
-    price?: number;
   }>;
 
   const seats = (order as any).seats || [];
@@ -143,26 +133,16 @@ export function printBill(order: Order) {
       </div>
       <div class="divider"></div>
       <div class="info"><span class="badge">${orderType === 'parcel' ? 'PARCEL' : 'DINE-IN'}</span></div>
-      ${orderType === 'dine-in' ? `<div class="info">Table: ${escapeHtml(order.table_number)}${seatsDisplay ? ` | Seats: ${escapeHtml(seatsDisplay)}` : ''}</div>` : ''}
-      <div class="info">Customer: ${escapeHtml(order.customer_name)}</div>
-      <div class="info">Phone: ${escapeHtml(order.phone_number)}</div>
+      ${orderType === 'dine-in' ? `<div class="info">Table: ${order.table_number}${seatsDisplay ? ` | Seats: ${seatsDisplay}` : ''}</div>` : ''}
+      <div class="info">Customer: ${order.customer_name}</div>
+      <div class="info">Phone: ${order.phone_number}</div>
       <div class="divider"></div>
       ${orderedItems.map(item => `
         <div class="item">
-          <span>${escapeHtml(item.name)} x ${item.quantity}</span>
+          <span>${item.name} x ${item.quantity}</span>
           <span>₹${item.price * item.quantity}</span>
         </div>
       `).join('')}
-      ${extraItems.length > 0 ? `
-        <div class="divider"></div>
-        <div class="info"><strong>Extra Items</strong></div>
-        ${extraItems.map(item => `
-          <div class="item">
-            <span>${escapeHtml(item.name)} x ${item.quantity}</span>
-            <span>${item.price ? `₹${item.price * item.quantity}` : '-'}</span>
-          </div>
-        `).join('')}
-      ` : ''}
       <div class="divider"></div>
       <div class="total">
         <span>TOTAL</span>

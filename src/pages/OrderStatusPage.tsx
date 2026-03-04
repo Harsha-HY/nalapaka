@@ -173,18 +173,11 @@ export default function OrderStatusPage() {
               <CheckCircle className="h-8 w-8 text-success" />
             </div>
             <h1 className="text-2xl font-bold text-success">{t('orderConfirmed')}</h1>
-            {(currentOrder as any).accepted_by_kitchen_name && (
-              <p className="text-sm text-success/80 mt-1">
-                {language === 'kn' 
-                  ? `ಅಡುಗೆಮನೆಯಲ್ಲಿ ದೃಢೀಕರಿಸಲಾಗಿದೆ` 
-                  : `Confirmed by Kitchen`}
-              </p>
-            )}
             {(currentOrder as any).accepted_by_server_name && (
               <p className="text-sm text-success/80 mt-1">
                 {language === 'kn' 
                   ? `${(currentOrder as any).accepted_by_server_name} ಅವರು ಸ್ವೀಕರಿಸಿದ್ದಾರೆ` 
-                  : `Server: ${(currentOrder as any).accepted_by_server_name}`}
+                  : `Accepted by ${(currentOrder as any).accepted_by_server_name}`}
               </p>
             )}
             {waitTimeMinutes && confirmedAt && (
@@ -200,7 +193,7 @@ export default function OrderStatusPage() {
             </div>
             <h1 className="text-2xl font-bold text-warning">{t('waitingConfirmation')}</h1>
             <p className="text-sm text-warning/80 mt-1">
-              {language === 'kn' ? 'ಅಡುಗೆಮನೆ ದೃಢೀಕರಣಕ್ಕಾಗಿ ಕಾಯುತ್ತಿದೆ...' : 'Waiting for kitchen confirmation...'}
+              {language === 'kn' ? 'ದಯವಿಟ್ಟು ಕಾಯಿರಿ...' : 'Please wait...'}
             </p>
           </div>
         )}

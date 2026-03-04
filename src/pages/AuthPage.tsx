@@ -31,9 +31,8 @@ export default function AuthPage() {
         navigate('/manager', { replace: true });
       } else if (role === 'server') {
         navigate('/server', { replace: true });
-      } else if (role === 'kitchen') {
-        navigate('/kitchen', { replace: true });
       } else {
+        // Customer or any other role
         navigate('/menu', { replace: true });
       }
     }
