@@ -16,15 +16,6 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const ALL_SEATS = ['A', 'B', 'C', 'D'];
-const CHECKOUT_PATCH_EVENT = 'voice-checkout-patch';
-
-interface VoiceCheckoutPatch {
-  customer_name?: string;
-  phone_number?: string;
-  order_type?: 'dine-in' | 'parcel';
-  table_number?: string;
-  seat_blocks?: string[];
-}
 
 export default function CheckoutPage() {
   const { items, totalAmount, clearCart, updateQuantity, removeItem } = useCart();
@@ -67,57 +58,6 @@ export default function CheckoutPage() {
     }
   }, [hasActiveOrder, currentOrder]);
 
-  // Voice AI form-fill patch listener
-  useEffect(() => {
-    const handler = (event: Event) => {
-      if (hasActiveOrder) return;
-
-      const customEvent = event as CustomEvent<VoiceCheckoutPatch>;
-      const patch = customEvent.detail || {};
-
-      if (patch.customer_name) setCustomerName(patch.customer_name);
-      if (patch.phone_number) setPhoneNumber(patch.phone_number);
-
-      if (patch.order_type === 'parcel') {
-        setSelectedOrderType('parcel');
-        setTableNumber('');
-        setSelectedSeats([]);
-        setSeatError(null);
-      }
-
-      if (patch.order_type === 'dine-in') {
-        setSelectedOrderType('dine-in');
-      }
-
-      if (patch.table_number) {
-        setSelectedOrderType('dine-in');
-        setTableNumber(patch.table_number);
-        setSeatError(null);
-      }
-
-      if (patch.seat_blocks?.length) {
-        setSelectedOrderType('dine-in');
-        const normalized = patch.seat_blocks.map((s) => s.toUpperCase()).filter((s) => ALL_SEATS.includes(s));
-
-        if (!tableNumber.trim()) {
-          setSeatError(language === 'kn' ? 'ಮೊದಲು ಟೇಬಲ್ ಸಂಖ್ಯೆಯನ್ನು ನೀಡಿ' : 'Please provide table number first');
-          return;
-        }
-
-        const unavailable = normalized.filter((seat) => lockedSeats.includes(seat));
-        if (unavailable.length > 0) {
-          setSeatError(language === 'kn' ? 'ಕೆಲವು ಆಸನಗಳು ಈಗಾಗಲೇ ಆಕ್ರಮಿತ' : 'Some seats are already occupied');
-          return;
-        }
-
-        setSeatError(null);
-        setSelectedSeats((prev) => Array.from(new Set([...prev, ...normalized])));
-      }
-    };
-
-    window.addEventListener(CHECKOUT_PATCH_EVENT, handler as EventListener);
-    return () => window.removeEventListener(CHECKOUT_PATCH_EVENT, handler as EventListener);
-  }, [hasActiveOrder, language, lockedSeats, tableNumber]);
 
   if (items.length === 0) {
     navigate('/menu');
@@ -143,8 +83,8 @@ export default function CheckoutPage() {
     e.preventDefault();
     
     if (!hasActiveOrder) {
-      if (!customerName.trim() || !phoneNumber.trim()) {
-        toast.error(language === 'kn' ? 'ಎಲ್ಲಾ ಕ್ಷೇತ್ರಗಳನ್ನು ಭರ್ತಿ ಮಾಡಿ' : 'Please fill in all fields');
+      if (!customerName.trim()) {
+        toast.error(language === 'kn' ? 'ಹೆಸರನ್ನು ನಮೂದಿಸಿ' : 'Please enter your name');
         return;
       }
       if (!selectedOrderType) {
@@ -164,8 +104,8 @@ export default function CheckoutPage() {
     }
 
     // Save profile
-    if (customerName.trim() && phoneNumber.trim()) {
-      upsertProfile(customerName.trim(), phoneNumber.trim());
+    if (customerName.trim()) {
+      upsertProfile(customerName.trim(), phoneNumber.trim() || '');
     }
 
     if (hasActiveOrder && currentOrder) {
@@ -282,14 +222,13 @@ export default function CheckoutPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone-number">{t('phoneNumber')}</Label>
+                  <Label htmlFor="phone-number">{t('phoneNumber')} <span className="text-muted-foreground text-xs">({language === 'kn' ? 'ಐಚ್ಛಿಕ' : 'Optional'})</span></Label>
                   <Input
                     id="phone-number"
                     type="tel"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder={language === 'kn' ? 'ಫೋನ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ' : 'Enter phone number'}
-                    required
+                    placeholder={language === 'kn' ? 'ಫೋನ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ' : 'Enter phone number (optional)'}
                     className="h-12"
                   />
                 </div>
