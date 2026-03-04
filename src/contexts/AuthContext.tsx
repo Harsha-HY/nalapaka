@@ -1,14 +1,15 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 
-type UserRole = 'manager' | 'server' | 'customer';
+type UserRole = 'manager' | 'server' | 'customer' | 'kitchen';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isManager: boolean;
   isServer: boolean;
+  isKitchen: boolean;
   role: UserRole | null;
   isLoading: boolean;
   roleLoading: boolean;
@@ -25,12 +26,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [roleLoading, setRoleLoading] = useState(false);
+  const initialized = useRef(false);
 
   const isManager = role === 'manager';
   const isServer = role === 'server';
+  const isKitchen = role === 'kitchen';
 
-  // Function to fetch user role from backend
-  const fetchUserRole = async (userId: string): Promise<UserRole | null> => {
+  const fetchUserRole = async (userId: string): Promise<UserRole> => {
     try {
       const { data, error } = await supabase
         .from('user_roles')
@@ -38,80 +40,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('user_id', userId)
         .single();
       
-      if (error) {
-        console.error('Error fetching role:', error);
-        return 'customer';
-      }
-      
-      return (data?.role as UserRole) || 'customer';
-    } catch (error) {
-      console.error('Error fetching role:', error);
+      if (error || !data?.role) return 'customer';
+      return data.role as UserRole;
+    } catch {
       return 'customer';
     }
   };
 
   useEffect(() => {
-    // Set up auth state listener BEFORE checking session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email);
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
+    // Safety timeout - never stay loading more than 3 seconds
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn('Auth loading timeout - forcing complete');
+        setIsLoading(false);
+      }
+    }, 3000);
+
+    // Get existing session first for fast load
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      if (existingSession?.user) {
+        setSession(existingSession);
+        setUser(existingSession.user);
         setRoleLoading(true);
-        // Use setTimeout to avoid potential deadlock
-        setTimeout(async () => {
-          const userRole = await fetchUserRole(session.user.id);
-          console.log('User role fetched:', userRole);
+        fetchUserRole(existingSession.user.id).then((userRole) => {
           setRole(userRole);
           setRoleLoading(false);
           setIsLoading(false);
-        }, 0);
+          initialized.current = true;
+        });
       } else {
-        setRole(null);
-        setRoleLoading(false);
         setIsLoading(false);
+        initialized.current = true;
       }
     });
 
-    // Check for existing session (persistent login)
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('Existing session check:', session?.user?.email);
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        setRoleLoading(true);
-        const userRole = await fetchUserRole(session.user.id);
-        console.log('Existing session role:', userRole);
-        setRole(userRole);
-        setRoleLoading(false);
+    // Listen for future auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (event === 'SIGNED_IN' && !initialized.current) return; // skip duplicate of getSession
+
+      if (event === 'SIGNED_IN') {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        if (newSession?.user) {
+          setRoleLoading(true);
+          const userRole = await fetchUserRole(newSession.user.id);
+          setRole(userRole);
+          setRoleLoading(false);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
+        setRole(null);
+      } else if (event === 'TOKEN_REFRESHED') {
+        // Only update session/user refs — do NOT re-fetch role (it hasn't changed)
+        setSession(newSession);
+        if (newSession?.user) {
+          setUser(prev => prev?.id === newSession.user.id ? prev : newSession.user);
+        }
       }
-      
-      setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
+      options: { emailRedirectTo: window.location.origin },
     });
     return { error: error as Error | null };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
   };
 
@@ -124,18 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        session,
-        isManager,
-        isServer,
-        role,
-        isLoading,
-        roleLoading,
-        signUp,
-        signIn,
-        signOut,
-      }}
+      value={{ user, session, isManager, isServer, isKitchen, role, isLoading, roleLoading, signUp, signIn, signOut }}
     >
       {children}
     </AuthContext.Provider>
@@ -144,8 +138,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }

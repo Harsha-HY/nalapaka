@@ -176,17 +176,21 @@ export default function ManagerDashboard() {
     }
   };
 
-  const handlePrintKitchen = (order: Order, isExtra: boolean = false) => {
-    const items = isExtra 
-      ? ((order as any).extra_items || [])
-      : (order.ordered_items as any[] || []);
-    
+  const handlePrintKitchen = (order: Order) => {
+    const baseItems = (order.ordered_items as any[] || []);
+    const extraItems = ((order as any).extra_items || []).map((item: any) => ({
+      ...item,
+      nameKn: item.nameKn || item.name,
+      price: item.price ?? 0,
+    }));
+
+    const items = [...baseItems, ...extraItems];
     if (items.length === 0) {
       toast.error('No items to print');
       return;
     }
-    
-    printKitchenSlip(order, items, isExtra);
+
+    printKitchenSlip(order, items, false);
   };
 
   const handlePrintBill = (order: Order) => {
@@ -362,8 +366,7 @@ export default function ManagerDashboard() {
                         onPaymentCash={() => handlePaymentConfirm(order.id, 'Cash')}
                         onPaymentUPI={() => handlePaymentConfirm(order.id, 'Online')}
                         onResetSeats={() => handleResetSeats(order.id)}
-                        onPrintKitchen={() => handlePrintKitchen(order, false)}
-                        onPrintExtraKitchen={() => handlePrintKitchen(order, true)}
+                        onPrintKitchen={() => handlePrintKitchen(order)}
                       />
                     ))}
                   </div>
@@ -496,7 +499,6 @@ interface PendingOrderCardProps {
   onPaymentUPI: () => void;
   onResetSeats: () => void;
   onPrintKitchen: () => void;
-  onPrintExtraKitchen: () => void;
 }
 
 function PendingOrderCard({ 
@@ -506,8 +508,7 @@ function PendingOrderCard({
   onPaymentCash,
   onPaymentUPI,
   onResetSeats,
-  onPrintKitchen,
-  onPrintExtraKitchen
+  onPrintKitchen
 }: PendingOrderCardProps) {
   const orderedItems = order.ordered_items as Array<{
     name: string;
@@ -567,13 +568,6 @@ function PendingOrderCard({
           Print Kitchen Slip
         </Button>
 
-        {/* Extra Items Kitchen Print */}
-        {extraItems.length > 0 && (
-          <Button variant="outline" size="sm" className="w-full bg-accent" onClick={onPrintExtraKitchen}>
-            <Printer className="h-4 w-4 mr-1" />
-            Print EXTRA Items
-          </Button>
-        )}
 
         {/* Server Acceptance Status */}
         {acceptedByServerName && (
@@ -581,6 +575,16 @@ function PendingOrderCard({
             <UserCheck className="h-4 w-4" />
             <span className="text-sm font-medium">
               Accepted by Server: {acceptedByServerName}
+            </span>
+          </div>
+        )}
+
+        {/* Kitchen Confirmation Status */}
+        {(order as any).accepted_by_kitchen_name && (
+          <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-primary/20 text-primary">
+            <CheckCircle className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              Order confirmed by Kitchen – Table {order.table_number}
             </span>
           </div>
         )}

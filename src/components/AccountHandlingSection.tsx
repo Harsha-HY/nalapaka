@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, User, Trash2, Edit, Phone, Table, Key } from 'lucide-react';
+import { Plus, User, Trash2, Edit, Phone, Table, Key, ChefHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,15 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useServers, Server } from '@/hooks/useServers';
+import { useKitchenStaff, KitchenStaff } from '@/hooks/useKitchenStaff';
 import { supabase } from '@/integrations/supabase/client';
 
 const ALL_TABLES = Array.from({ length: 20 }, (_, i) => String(i + 1));
 
 export function AccountHandlingSection() {
   const { servers, createServerAccount, updateServer, deleteServer, isLoading } = useServers();
+  const { kitchenStaff, createKitchenAccount, deleteKitchenStaff } = useKitchenStaff();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddKitchenModal, setShowAddKitchenModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordResetServer, setPasswordResetServer] = useState<Server | null>(null);
@@ -29,6 +33,13 @@ export function AccountHandlingSection() {
     confirmPassword: '',
     phoneNumber: '',
     assignedTables: [] as string[],
+  });
+  const [kitchenFormData, setKitchenFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    phoneNumber: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -193,10 +204,52 @@ export function AccountHandlingSection() {
       .flatMap(s => s.assigned_tables);
   };
 
+  const handleAddKitchen = async () => {
+    if (kitchenFormData.password !== kitchenFormData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await createKitchenAccount(
+        kitchenFormData.email,
+        kitchenFormData.password,
+        kitchenFormData.name,
+        kitchenFormData.phoneNumber
+      );
+      toast.success(`Kitchen "${kitchenFormData.name}" created successfully`);
+      setShowAddKitchenModal(false);
+      setKitchenFormData({ name: '', email: '', password: '', confirmPassword: '', phoneNumber: '' });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create kitchen account');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteKitchen = async (staff: KitchenStaff) => {
+    if (!confirm(`Are you sure you want to delete kitchen staff "${staff.name}"?`)) return;
+    try {
+      await deleteKitchenStaff(staff.id);
+      toast.success('Kitchen staff deleted');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete kitchen staff');
+    }
+  };
+
   return (
     <div className="space-y-4">
+      <h2 className="text-lg font-semibold">Account Handling</h2>
+
+      <Tabs defaultValue="servers" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="servers">Servers</TabsTrigger>
+          <TabsTrigger value="kitchen">Kitchen</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="servers" className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Account Handling</h2>
+        <span className="text-sm text-muted-foreground">{servers.length} server(s)</span>
         <Button onClick={() => setShowAddModal(true)} size="sm">
           <Plus className="h-4 w-4 mr-1" />
           Add Server
@@ -471,6 +524,122 @@ export function AccountHandlingSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      </TabsContent>
+
+      <TabsContent value="kitchen" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">{kitchenStaff.length} kitchen staff</span>
+          <Button onClick={() => setShowAddKitchenModal(true)} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            Add Kitchen
+          </Button>
+        </div>
+
+        {kitchenStaff.length === 0 ? (
+          <Card className="shadow-soft border-0">
+            <CardContent className="py-8 text-center">
+              <ChefHat className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No kitchen staff created yet</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {kitchenStaff.map((staff) => (
+              <Card key={staff.id} className="shadow-soft border-0">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <ChefHat className="h-4 w-4" />
+                      {staff.name}
+                    </CardTitle>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteKitchen(staff)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {staff.phone_number && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Phone className="h-3 w-3" />
+                      {staff.phone_number}
+                    </div>
+                  )}
+                  <Badge variant={staff.is_active ? 'default' : 'secondary'} className="mt-2">
+                    {staff.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Add Kitchen Modal */}
+        <Dialog open={showAddKitchenModal} onOpenChange={setShowAddKitchenModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add Kitchen Staff</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Name *</Label>
+                <Input
+                  value={kitchenFormData.name}
+                  onChange={(e) => setKitchenFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., Kitchen 1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email (for login) *</Label>
+                <Input
+                  type="email"
+                  value={kitchenFormData.email}
+                  onChange={(e) => setKitchenFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="kitchen@restaurant.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Password *</Label>
+                <Input
+                  type="password"
+                  value={kitchenFormData.password}
+                  onChange={(e) => setKitchenFormData(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="••••••••"
+                  minLength={6}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Confirm Password *</Label>
+                <Input
+                  type="password"
+                  value={kitchenFormData.confirmPassword}
+                  onChange={(e) => setKitchenFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  placeholder="••••••••"
+                  minLength={6}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone Number</Label>
+                <Input
+                  value={kitchenFormData.phoneNumber}
+                  onChange={(e) => setKitchenFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                  placeholder="9876543210"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddKitchenModal(false)}>Cancel</Button>
+              <Button 
+                onClick={handleAddKitchen} 
+                disabled={isSubmitting || !kitchenFormData.name || !kitchenFormData.email || !kitchenFormData.password}
+              >
+                {isSubmitting ? 'Creating...' : 'Create Kitchen'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }

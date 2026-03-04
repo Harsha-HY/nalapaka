@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      kitchen_staff: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          phone_number: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          phone_number?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone_number?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       locked_seats: {
         Row: {
           id: string
@@ -84,6 +114,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          accepted_by_kitchen_name: string | null
           accepted_by_server_id: string | null
           accepted_by_server_name: string | null
           archived_at: string | null
@@ -94,6 +125,8 @@ export type Database = {
           eating_finished: boolean
           extra_items: Json | null
           id: string
+          kitchen_accepted_at: string | null
+          kitchen_prepared_at: string | null
           order_stage: string | null
           order_status: Database["public"]["Enums"]["order_status"]
           order_type: Database["public"]["Enums"]["order_type"] | null
@@ -113,6 +146,7 @@ export type Database = {
           wait_time_minutes: number | null
         }
         Insert: {
+          accepted_by_kitchen_name?: string | null
           accepted_by_server_id?: string | null
           accepted_by_server_name?: string | null
           archived_at?: string | null
@@ -123,6 +157,8 @@ export type Database = {
           eating_finished?: boolean
           extra_items?: Json | null
           id?: string
+          kitchen_accepted_at?: string | null
+          kitchen_prepared_at?: string | null
           order_stage?: string | null
           order_status?: Database["public"]["Enums"]["order_status"]
           order_type?: Database["public"]["Enums"]["order_type"] | null
@@ -142,6 +178,7 @@ export type Database = {
           wait_time_minutes?: number | null
         }
         Update: {
+          accepted_by_kitchen_name?: string | null
           accepted_by_server_id?: string | null
           accepted_by_server_name?: string | null
           archived_at?: string | null
@@ -152,6 +189,8 @@ export type Database = {
           eating_finished?: boolean
           extra_items?: Json | null
           id?: string
+          kitchen_accepted_at?: string | null
+          kitchen_prepared_at?: string | null
           order_stage?: string | null
           order_status?: Database["public"]["Enums"]["order_status"]
           order_type?: Database["public"]["Enums"]["order_type"] | null
@@ -169,6 +208,33 @@ export type Database = {
           updated_at?: string
           user_id?: string
           wait_time_minutes?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          name: string | null
+          phone_number: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          phone_number?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          phone_number?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -287,11 +353,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_kitchen: { Args: never; Returns: boolean }
       is_manager: { Args: never; Returns: boolean }
       is_server: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "manager" | "customer" | "server"
+      app_role: "manager" | "customer" | "server" | "kitchen"
       order_status: "Pending" | "Confirmed" | "Cancelled"
       order_type: "dine-in" | "parcel"
       payment_mode: "Not Paid" | "Cash" | "Online"
@@ -422,7 +489,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["manager", "customer", "server"],
+      app_role: ["manager", "customer", "server", "kitchen"],
       order_status: ["Pending", "Confirmed", "Cancelled"],
       order_type: ["dine-in", "parcel"],
       payment_mode: ["Not Paid", "Cash", "Online"],
