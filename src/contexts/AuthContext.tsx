@@ -92,8 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setRole(null);
       } else if (event === 'TOKEN_REFRESHED') {
+        // Only update session/user refs — do NOT re-fetch role (it hasn't changed)
         setSession(newSession);
-        setUser(newSession?.user ?? null);
+        if (newSession?.user) {
+          setUser(prev => prev?.id === newSession.user.id ? prev : newSession.user);
+        }
       }
     });
 

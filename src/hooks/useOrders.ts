@@ -33,10 +33,17 @@ export function useOrders() {
     
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      // Customers only need their own orders — much faster query
+      if (!isManager) {
+        query = query.eq('user_id', user.id).limit(20);
+      }
+
+      const { data, error } = await query;
       
       if (error) throw error;
       setOrders((data || []) as Order[]);
@@ -60,7 +67,7 @@ export function useOrders() {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Subscribe to realtime updates
+  // Subscribe to realtime updates — stable subscription, no dependency on currentOrder
   useEffect(() => {
     if (!user) return;
 
@@ -77,21 +84,25 @@ export function useOrders() {
           if (payload.eventType === 'INSERT') {
             setOrders((prev) => [payload.new as Order, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as Order;
             setOrders((prev) =>
               prev.map((order) =>
-                order.id === (payload.new as Order).id ? (payload.new as Order) : order
+                order.id === updated.id ? updated : order
               )
             );
-            // Update current order if it's the one being updated
-            if (currentOrder?.id === (payload.new as Order).id) {
-              setCurrentOrder(payload.new as Order);
-              // Trigger haptic feedback for confirmation
-              if ((payload.new as Order).order_status === 'Confirmed') {
-                if ('vibrate' in navigator) {
-                  navigator.vibrate([100, 50, 100]);
+            // Update current order using functional setter to avoid stale ref
+            setCurrentOrder((prev) => {
+              if (prev?.id === updated.id) {
+                // Trigger haptic feedback for confirmation
+                if (updated.order_status === 'Confirmed' && prev.order_status !== 'Confirmed') {
+                  if ('vibrate' in navigator) {
+                    navigator.vibrate([100, 50, 100]);
+                  }
                 }
+                return updated;
               }
-            }
+              return prev;
+            });
           } else if (payload.eventType === 'DELETE') {
             setOrders((prev) => prev.filter((order) => order.id !== (payload.old as Order).id));
           }
@@ -102,7 +113,7 @@ export function useOrders() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, currentOrder?.id]);
+  }, [user]);
 
   const createOrder = async (orderData: Omit<OrderInsert, 'user_id'> & { 
     order_type?: 'dine-in' | 'parcel';

@@ -19,7 +19,15 @@ import ServerDashboard from "./pages/ServerDashboard";
 import KitchenDashboard from "./pages/KitchenDashboard";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes — avoid refetching on every tab switch
+      refetchOnWindowFocus: false, // prevent re-fetch when switching tabs
+      retry: 1,
+    },
+  },
+});
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
