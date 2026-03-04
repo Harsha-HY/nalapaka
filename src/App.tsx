@@ -8,6 +8,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
 import AuthPage from "./pages/AuthPage";
+import GuestEntry from "./pages/GuestEntry";
 import MenuPage from "./pages/MenuPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
@@ -117,6 +118,7 @@ const AppRoutes = () => (
   <>
     <Routes>
       <Route path="/" element={<PublicRoute><AuthPage /></PublicRoute>} />
+      <Route path="/guest" element={<GuestEntry />} />
       <Route path="/menu" element={<ProtectedRoute><MenuPage /></ProtectedRoute>} />
       <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
       <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
