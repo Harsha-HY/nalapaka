@@ -79,6 +79,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_IN' && !initialized.current) return; // skip duplicate of getSession
 
       if (event === 'SIGNED_IN') {
+        // If same user is already loaded, just update session refs — don't re-fetch role
+        if (newSession?.user && user?.id === newSession.user.id && role) {
+          setSession(newSession);
+          return;
+        }
         setSession(newSession);
         setUser(newSession?.user ?? null);
         if (newSession?.user) {
