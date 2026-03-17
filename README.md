@@ -1,73 +1,74 @@
-# Welcome to your Lovable project
+Smart Restaurant Ordering & Management System
 
-## Project info
+Live Demo
+https://nalapaka.lovable.app
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Overview
 
-## How can I edit this code?
+This is a QR-based digital restaurant system where customers can scan a QR code at their table and place orders directly using their mobile phone. The system connects customers, servers, kitchen staff, and managers through real-time dashboards.
 
-There are several ways of editing your application.
+Traditional System Problems
 
-**Use Lovable**
+- Waiters take orders manually
+- High chances of mistakes
+- Slow service
+- Extra workload on staff
+- No real-time tracking
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+Our Solution
 
-Changes made via Lovable will be committed automatically to this repo.
+1. QR Code Ordering
+   Customers scan a QR code and open the menu on their phone.
 
-**Use your preferred IDE**
+2. Digital Menu
+   Customers can view items with images and add them to the cart easily.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+3. Order Placement
+   Customers enter their name, phone number, table number, and dining type (dine-in or parcel), then place the order.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+System Workflow
 
-Follow these steps:
+Customer Side
+Customers can browse the menu, add items, place orders, track orders, and make payments.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Kitchen Dashboard
+The kitchen receives orders instantly, views items and quantity, and marks orders as prepared.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Server Dashboard
+Servers can see assigned tables and manage customer orders.
 
-# Step 3: Install the necessary dependencies.
-npm i
+Manager Dashboard
+Managers can monitor all orders, track sales, generate the final bill, and control the system.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+Payment System
 
-**Edit a file directly in GitHub**
+Supports both cash payment and online QR payment. The final bill is generated after payment confirmation.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Table Reset
 
-**Use GitHub Codespaces**
+After the order is completed, the table is automatically reset and made available for the next customer.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Benefits
 
-## What technologies are used for this project?
+- Faster service
+- Reduced errors
+- Real-time order tracking
+- Less workload on staff
+- Improved customer experience
 
-This project is built with:
+Tech Stack
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Frontend: React (Vite)
+Backend: Supabase
+UI: ShadCN / Tailwind
+Deployment: Lovable
 
-## How can I deploy this project?
+Future Scope
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+- AI-based recommendations
+- Voice ordering system
+- Advanced analytics
 
-## Can I connect a custom domain to my Lovable project?
+Author
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Developed by Harsha
