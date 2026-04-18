@@ -358,7 +358,7 @@ export type Database = {
       is_server: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "manager" | "customer" | "server" | "kitchen"
+      app_role: "manager" | "customer" | "server" | "kitchen" | "super_admin"
       order_status: "Pending" | "Confirmed" | "Cancelled"
       order_type: "dine-in" | "parcel"
       payment_mode: "Not Paid" | "Cash" | "Online"
@@ -489,7 +489,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["manager", "customer", "server", "kitchen"],
+      app_role: ["manager", "customer", "server", "kitchen", "super_admin"],
       order_status: ["Pending", "Confirmed", "Cancelled"],
       order_type: ["dine-in", "parcel"],
       payment_mode: ["Not Paid", "Cash", "Online"],
