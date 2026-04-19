@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useHotelContext } from '@/hooks/useHotelContext';
 
 interface LockedSeat {
   id: string;
@@ -10,6 +11,7 @@ interface LockedSeat {
 }
 
 export function useLockedSeats() {
+  const { hotelId } = useHotelContext();
   const [lockedSeats, setLockedSeats] = useState<LockedSeat[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -72,11 +74,16 @@ export function useLockedSeats() {
   };
 
   const lockSeats = async (tableNumber: string, seats: string[], orderId: string): Promise<boolean> => {
+    if (!hotelId) {
+      console.error('No hotel context for locking seats');
+      return false;
+    }
     try {
       const insertData = seats.map(seat => ({
         table_number: tableNumber,
         seat,
         order_id: orderId,
+        hotel_id: hotelId,
       }));
 
       const { error } = await supabase
