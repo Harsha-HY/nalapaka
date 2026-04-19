@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHotelContext } from '@/hooks/useHotelContext';
 
 export interface MenuItem {
   id: string;
@@ -14,15 +15,23 @@ export interface MenuItem {
 
 export function useMenuItems() {
   const { isManager } = useAuth();
+  const { hotelId } = useHotelContext();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchMenuItems = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('menu_items')
         .select('*')
         .order('category', { ascending: true });
+
+      // Scope to current hotel when known
+      if (hotelId) {
+        query = query.eq('hotel_id', hotelId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -42,7 +51,7 @@ export function useMenuItems() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [hotelId]);
 
   useEffect(() => {
     fetchMenuItems();

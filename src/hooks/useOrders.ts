@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHotelContext } from '@/hooks/useHotelContext';
 import type { Database } from '@/integrations/supabase/types';
 
 type OrderRow = Database['public']['Tables']['orders']['Row'];
@@ -24,6 +25,7 @@ type OrderInsert = Database['public']['Tables']['orders']['Insert'];
 
 export function useOrders() {
   const { user, isManager } = useAuth();
+  const { hotelId } = useHotelContext();
   const [orders, setOrders] = useState<Order[]>([]);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -120,6 +122,7 @@ export function useOrders() {
     seats?: string[];
   }) => {
     if (!user) throw new Error('User not authenticated');
+    if (!hotelId) throw new Error('No hotel selected. Please scan a QR code at your table.');
 
     const baseItems = orderData.ordered_items || [];
 
@@ -128,6 +131,7 @@ export function useOrders() {
       .insert({
         ...orderData,
         user_id: user.id,
+        hotel_id: hotelId,
         order_type: orderData.order_type || 'dine-in',
         seats: orderData.seats || [],
         order_stage: 'cart',

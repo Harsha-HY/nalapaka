@@ -26,8 +26,9 @@ export default function AuthPage() {
     if (user && role && !roleLoading) {
       console.log('Redirecting based on role:', role);
       
-      // STRICT REDIRECT RULES - NO FALLBACK
-      if (role === 'manager') {
+      if (role === 'super_admin') {
+        navigate('/dining-hub', { replace: true });
+      } else if (role === 'manager') {
         navigate('/manager', { replace: true });
       } else if (role === 'server') {
         navigate('/server', { replace: true });
@@ -131,11 +132,11 @@ export default function AuthPage() {
 
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 pb-8">
-        {/* Restaurant name */}
+        {/* Brand */}
         <div className="text-center mb-8">
-          <p className="text-muted-foreground mb-2">{t('welcome')}</p>
-          <h1 className="text-4xl font-bold text-primary">Nalapaka</h1>
-          <p className="text-lg text-muted-foreground">Nanjangud</p>
+          <p className="text-muted-foreground mb-2">Welcome to</p>
+          <h1 className="text-4xl font-bold text-primary">Dining Hub</h1>
+          <p className="text-lg text-muted-foreground">Multi-Restaurant Management Platform</p>
         </div>
 
         {/* Auth card */}

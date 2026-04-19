@@ -50,7 +50,7 @@ type DashboardSection = 'orders' | 'menu' | 'history' | 'sales' | 'accounts' | '
 
 export default function ManagerDashboard() {
   const { language } = useLanguage();
-  const { isManager, signOut } = useAuth();
+  const { isManager, signOut, hotel } = useAuth();
   const { 
     orders, 
     isLoading, 
@@ -213,8 +213,8 @@ export default function ManagerDashboard() {
                 <UtensilsCrossed className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-foreground">Manager Dashboard</h1>
-                <p className="text-xs text-muted-foreground">Nalapaka Nanjangud</p>
+                <h1 className="text-lg font-bold text-foreground">{hotel?.name || 'Manager Dashboard'}</h1>
+                <p className="text-xs text-muted-foreground">Manager Dashboard · Dining Hub</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

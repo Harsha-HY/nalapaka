@@ -1,70 +1,88 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { setGuestHotel } from '@/hooks/useHotelContext';
 import { Loader2 } from 'lucide-react';
 
 /**
- * GuestEntry page: handles QR code scans.
- * Auto-creates a device-specific account and redirects to menu.
- * No login/signup UI shown to the customer.
+ * GuestEntry: scans QR code → /guest/:hotelSlug
+ * - Resolves hotel by slug, caches it for the customer's session
+ * - Creates a device-bound guest auth user (silent, no UI)
+ * - Redirects to /menu
  */
 export default function GuestEntry() {
   const navigate = useNavigate();
+  const { hotelSlug } = useParams<{ hotelSlug?: string }>();
   const [status, setStatus] = useState('Setting up your menu...');
 
   useEffect(() => {
     handleGuestEntry();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotelSlug]);
 
   const handleGuestEntry = async () => {
     try {
-      // Check if already signed in
+      // 1) Resolve hotel from slug — required so customer's order has a hotel_id
+      let resolvedHotel: { id: string; name: string; slug: string } | null = null;
+      if (hotelSlug) {
+        const { data: hotel } = await supabase
+          .from('hotels')
+          .select('id, name, slug, is_active')
+          .eq('slug', hotelSlug)
+          .maybeSingle();
+        if (!hotel || !hotel.is_active) {
+          setStatus('This restaurant is not available. Please scan a valid QR code.');
+          return;
+        }
+        resolvedHotel = { id: hotel.id, name: hotel.name, slug: hotel.slug };
+        setGuestHotel(resolvedHotel);
+      } else {
+        // No slug — fallback to first active hotel for legacy QR support
+        const { data: fallback } = await supabase
+          .from('hotels')
+          .select('id, name, slug')
+          .eq('is_active', true)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (fallback) {
+          resolvedHotel = { id: fallback.id, name: fallback.name, slug: fallback.slug };
+          setGuestHotel(resolvedHotel);
+        }
+      }
+
+      // 2) Already signed in? Just go to menu
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         navigate('/menu', { replace: true });
         return;
       }
 
-      // Get or create device ID
-      let deviceId = localStorage.getItem('nalapaka_device_id');
+      // 3) Device-bound guest credentials
+      let deviceId = localStorage.getItem('dh_device_id');
       if (!deviceId) {
         deviceId = crypto.randomUUID();
-        localStorage.setItem('nalapaka_device_id', deviceId);
+        localStorage.setItem('dh_device_id', deviceId);
       }
 
-      const email = `guest-${deviceId}@nalapaka.guest`;
+      const email = `guest-${deviceId}@dininghub.guest`;
       const password = `guest-pwd-${deviceId}`;
 
-      // Try to sign in first (returning guest)
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (!signInError) {
         navigate('/menu', { replace: true });
         return;
       }
 
-      // New guest - sign up
       setStatus('Creating your account...');
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
+      const { error: signUpError } = await supabase.auth.signUp({ email, password });
       if (signUpError) {
         console.error('Guest signup error:', signUpError);
         setStatus('Something went wrong. Please try again.');
         return;
       }
 
-      // Auto-confirm is enabled, so sign in immediately
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
       if (loginError) {
         console.error('Guest login error:', loginError);
         setStatus('Something went wrong. Please try again.');

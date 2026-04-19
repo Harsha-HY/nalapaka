@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHotelContext } from '@/hooks/useHotelContext';
 import type { Database } from '@/integrations/supabase/types';
 
 type ReviewRow = Database['public']['Tables']['reviews']['Row'];
@@ -32,6 +33,7 @@ function toReview(row: ReviewRow): Review {
 
 export function useReviews() {
   const { user, isManager } = useAuth();
+  const { hotelId } = useHotelContext();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -103,10 +105,12 @@ export function useReviews() {
     review_text?: string | null;
   }) => {
     if (!user) throw new Error('User not authenticated');
+    if (!hotelId) throw new Error('No hotel context for review');
     
     const insertData: ReviewInsert = {
       customer_name: reviewData.customer_name,
       table_number: reviewData.table_number,
+      hotel_id: hotelId,
       order_id: reviewData.order_id || null,
       phone_number: reviewData.phone_number || null,
       seats: reviewData.seats || [],
