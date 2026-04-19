@@ -6,6 +6,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/hooks/useOrders';
 import { useSessionResume } from '@/hooks/useSessionResume';
+import { useHotelContext, ensureGuestHotelLoaded } from '@/hooks/useHotelContext';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { FloatingCart } from '@/components/FloatingCart';
 import { OrderStatusBanner } from '@/components/OrderStatusBanner';
@@ -30,13 +31,21 @@ const getCategoryLabel = (category: string, language: 'en' | 'kn'): string => {
 
 export default function MenuPage() {
   const { t, language } = useLanguage();
-  const { signOut, isManager } = useAuth();
+  const { signOut, isManager, role } = useAuth();
+  const { hotelName } = useHotelContext();
   const { menuItems, isLoading: isMenuLoading } = useMenuItems();
   const { currentOrder } = useOrders();
   const navigate = useNavigate();
   
   // Use session resume hook
   useSessionResume();
+
+  // Customers without QR scan still need a hotel — load first active one
+  useEffect(() => {
+    if (role === 'customer') {
+      ensureGuestHotelLoaded();
+    }
+  }, [role]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot>('all');
