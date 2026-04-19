@@ -151,9 +151,10 @@ export default function DiningHubDashboard() {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             hotelName: form.hotelName.trim(),
-            slug,
-            adminEmail: form.adminEmail.trim(),
-            adminPassword: form.adminPassword,
+            hotelSlug: slug,
+            managerEmail: form.adminEmail.trim(),
+            managerPassword: form.adminPassword,
+            managerName: form.hotelName.trim() + ' Manager',
           }),
         }
       );
