@@ -81,10 +81,24 @@ export function useMenuItems() {
     }
   }, [isManager]);
 
+  const deleteMenuItem = useCallback(async (itemId: string) => {
+    if (!isManager) return false;
+    try {
+      const { error } = await supabase.from('menu_items').delete().eq('id', itemId);
+      if (error) throw error;
+      setMenuItems((prev) => prev.filter((item) => item.id !== itemId));
+      return true;
+    } catch (error) {
+      console.error('Error deleting menu item:', error);
+      return false;
+    }
+  }, [isManager]);
+
   return {
     menuItems,
     isLoading,
     toggleAvailability,
+    deleteMenuItem,
     refreshMenuItems: fetchMenuItems,
   };
 }
