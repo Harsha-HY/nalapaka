@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { HotelQRCode } from '@/components/HotelQRCode';
 import {
   Building2,
   Plus,
@@ -18,6 +19,7 @@ import {
   Users,
   IndianRupee,
   Loader2,
+  QrCode,
 } from 'lucide-react';
 
 interface Hotel {
@@ -44,6 +46,7 @@ export default function DiningHubDashboard() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [qrHotel, setQrHotel] = useState<Hotel | null>(null);
   const [form, setForm] = useState({
     hotelName: '',
     slug: '',
@@ -287,6 +290,10 @@ export default function DiningHubDashboard() {
                         <p className="text-xs text-muted-foreground mt-1">slug: {h.slug}</p>
                       </div>
                       <div className="flex gap-1">
+                        <Button variant="outline" size="sm" onClick={() => setQrHotel(h)}>
+                          <QrCode className="h-4 w-4 mr-1" />
+                          QR
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => handleToggleActive(h)}>
                           {h.is_active ? 'Disable' : 'Enable'}
                         </Button>
@@ -387,6 +394,15 @@ export default function DiningHubDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {qrHotel && (
+        <HotelQRCode
+          hotelName={qrHotel.name}
+          hotelSlug={qrHotel.slug}
+          open={!!qrHotel}
+          onOpenChange={(o) => !o && setQrHotel(null)}
+        />
+      )}
     </div>
   );
 }
