@@ -17,6 +17,7 @@ import OrderHistoryPage from "./pages/OrderHistoryPage";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import ServerDashboard from "./pages/ServerDashboard";
 import KitchenDashboard from "./pages/KitchenDashboard";
+import DiningHubDashboard from "./pages/DiningHubDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -113,6 +114,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   }
   
   if (user && role) {
+    if (role === 'super_admin') return <Navigate to="/dining-hub" replace />;
     if (role === 'manager') return <Navigate to="/manager" replace />;
     if (role === 'server') return <Navigate to="/server" replace />;
     if (role === 'kitchen') return <Navigate to="/kitchen" replace />;
@@ -122,11 +124,27 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Super admin only route
+function SuperAdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, role, roleLoading } = useAuth();
+  if (isLoading || roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/" replace />;
+  if (role !== 'super_admin') return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 const AppRoutes = () => (
   <>
     <Routes>
       <Route path="/" element={<PublicRoute><AuthPage /></PublicRoute>} />
       <Route path="/guest" element={<GuestEntry />} />
+      <Route path="/guest/:hotelSlug" element={<GuestEntry />} />
       <Route path="/menu" element={<ProtectedRoute><MenuPage /></ProtectedRoute>} />
       <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
       <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
@@ -135,6 +153,7 @@ const AppRoutes = () => (
       <Route path="/manager" element={<ManagerRoute><ManagerDashboard /></ManagerRoute>} />
       <Route path="/server" element={<ServerRoute><ServerDashboard /></ServerRoute>} />
       <Route path="/kitchen" element={<KitchenRoute><KitchenDashboard /></KitchenRoute>} />
+      <Route path="/dining-hub" element={<SuperAdminRoute><DiningHubDashboard /></SuperAdminRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </>
