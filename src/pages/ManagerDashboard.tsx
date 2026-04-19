@@ -29,6 +29,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrders, Order } from '@/hooks/useOrders';
 import { useMenuItems } from '@/hooks/useMenuItems';
 import { useLockedSeats } from '@/hooks/useLockedSeats';
+import { HotelQRCode } from '@/components/HotelQRCode';
+import { AddMenuItemDialog } from '@/components/AddMenuItemDialog';
+import { Trash2, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,11 +65,12 @@ export default function ManagerDashboard() {
     deleteDayHistory,
     archiveTodayOrders
   } = useOrders();
-  const { menuItems, toggleAvailability } = useMenuItems();
+  const { menuItems, toggleAvailability, deleteMenuItem, refreshMenuItems } = useMenuItems();
   const { unlockSeatsByOrderId, resetAllSeats } = useLockedSeats();
   const navigate = useNavigate();
   
   const [activeSection, setActiveSection] = useState<DashboardSection>('orders');
+  const [showQR, setShowQR] = useState(false);
 
   // Redirect non-managers
   useEffect(() => {
@@ -218,6 +222,12 @@ export default function ManagerDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {hotel?.slug && (
+                <Button variant="outline" size="sm" onClick={() => setShowQR(true)} className="shadow-sm">
+                  <QrCode className="h-4 w-4 mr-1" />
+                  Menu QR
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={refreshOrders} disabled={isLoading} className="shadow-sm">
                 <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh
@@ -398,6 +408,10 @@ export default function ManagerDashboard() {
           {/* Menu Control Section */}
           {activeSection === 'menu' && (
             <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Menu Items ({menuItems.length})</h2>
+                <AddMenuItemDialog onItemAdded={refreshMenuItems} />
+              </div>
               {['south-indian', 'north-indian', 'chinese', 'tandoor'].map((category) => {
                 const categoryItems = menuItems.filter(item => item.category === category);
                 if (categoryItems.length === 0) return null;
@@ -405,37 +419,52 @@ export default function ManagerDashboard() {
                 return (
                   <Card key={category}>
                     <CardHeader>
-                      <CardTitle className="capitalize">{category.replace('-', ' ')}</CardTitle>
+                      <CardTitle className="capitalize">{category.replace('-', ' ')} ({categoryItems.length})</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
                       {categoryItems.map((item) => (
                         <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
                             <img 
                               src={getFoodThumbnail(item.id)} 
                               alt={item.name}
-                              className="w-10 h-10 rounded-md object-cover"
+                              className="w-10 h-10 rounded-md object-cover flex-shrink-0"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                               loading="lazy"
                             />
-                            <div>
-                              <p className={`font-medium ${!item.isAvailable ? 'text-muted-foreground line-through' : ''}`}>
+                            <div className="min-w-0">
+                              <p className={`font-medium truncate ${!item.isAvailable ? 'text-muted-foreground line-through' : ''}`}>
                                 {language === 'kn' ? item.nameKn : item.name}
                               </p>
                               <p className="text-sm text-muted-foreground">₹{item.price}</p>
                             </div>
                           </div>
-                          <Button
-                            variant={item.isAvailable ? 'destructive' : 'default'}
-                            size="sm"
-                            onClick={() => handleToggleAvailability(item.id, !item.isAvailable)}
-                          >
-                            {item.isAvailable ? (
-                              <><Minus className="h-4 w-4 mr-1" />Disable</>
-                            ) : (
-                              <><Plus className="h-4 w-4 mr-1" />Enable</>
-                            )}
-                          </Button>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Button
+                              variant={item.isAvailable ? 'destructive' : 'default'}
+                              size="sm"
+                              onClick={() => handleToggleAvailability(item.id, !item.isAvailable)}
+                            >
+                              {item.isAvailable ? (
+                                <><Minus className="h-4 w-4 mr-1" />Disable</>
+                              ) : (
+                                <><Plus className="h-4 w-4 mr-1" />Enable</>
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              onClick={async () => {
+                                if (!confirm(`Delete "${item.name}"?`)) return;
+                                const ok = await deleteMenuItem(item.id);
+                                if (ok) toast.success('Item deleted');
+                                else toast.error('Failed to delete');
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </CardContent>
