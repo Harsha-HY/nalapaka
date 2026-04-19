@@ -394,6 +394,15 @@ export default function DiningHubDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {qrHotel && (
+        <HotelQRCode
+          hotelName={qrHotel.name}
+          hotelSlug={qrHotel.slug}
+          open={!!qrHotel}
+          onOpenChange={(o) => !o && setQrHotel(null)}
+        />
+      )}
     </div>
   );
 }
