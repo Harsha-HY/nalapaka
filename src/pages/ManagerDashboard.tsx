@@ -515,6 +515,14 @@ export default function ManagerDashboard() {
         </main>
       </div>
 
+      {hotel?.slug && (
+        <HotelQRCode
+          hotelName={hotel.name}
+          hotelSlug={hotel.slug}
+          open={showQR}
+          onOpenChange={setShowQR}
+        />
+      )}
     </div>
   );
 }
