@@ -1,65 +1,41 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEffect, useState } from 'react';
+import { getDeviceProfile, saveDeviceProfile, type DeviceProfile } from '@/hooks/useDevice';
 
-interface Profile {
+interface ProfileShape {
   name: string | null;
   phone_number: string | null;
 }
 
+/**
+ * Device-bound customer profile (no auth needed).
+ * Stored locally so name + phone are auto-filled on every visit from the same device.
+ */
 export function useProfile() {
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const fetchProfile = useCallback(async () => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('name, phone_number')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-      }
-      
-      setProfile(data as Profile | null);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
+  const [profile, setProfile] = useState<ProfileShape | null>(() => {
+    const p = getDeviceProfile();
+    return p ? { name: p.name, phone_number: p.phone } : null;
+  });
+  const [isLoading] = useState(false);
 
   useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+    const onCustom = () => {
+      const p = getDeviceProfile();
+      setProfile(p ? { name: p.name, phone_number: p.phone } : null);
+    };
+    window.addEventListener('dh-device-profile-changed', onCustom);
+    return () => window.removeEventListener('dh-device-profile-changed', onCustom);
+  }, []);
 
   const upsertProfile = async (name: string, phoneNumber: string) => {
-    if (!user) return;
-
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (existing) {
-      await supabase
-        .from('profiles')
-        .update({ name, phone_number: phoneNumber })
-        .eq('user_id', user.id);
-    } else {
-      await supabase
-        .from('profiles')
-        .insert({ user_id: user.id, name, phone_number: phoneNumber });
-    }
-
+    const next: DeviceProfile = { name, phone: phoneNumber };
+    saveDeviceProfile(next);
     setProfile({ name, phone_number: phoneNumber });
+    window.dispatchEvent(new Event('dh-device-profile-changed'));
+  };
+
+  const fetchProfile = async () => {
+    const p = getDeviceProfile();
+    setProfile(p ? { name: p.name, phone_number: p.phone } : null);
   };
 
   return { profile, isLoading, upsertProfile, fetchProfile };
