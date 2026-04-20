@@ -53,6 +53,9 @@ export default function DiningHubDashboard() {
     adminEmail: '',
     adminPassword: '',
     confirmPassword: '',
+    address: '',
+    phone: '',
+    tagline: '',
   });
 
   useEffect(() => {
@@ -158,6 +161,9 @@ export default function DiningHubDashboard() {
             managerEmail: form.adminEmail.trim(),
             managerPassword: form.adminPassword,
             managerName: form.hotelName.trim() + ' Manager',
+            address: form.address.trim() || null,
+            phone: form.phone.trim() || null,
+            tagline: form.tagline.trim() || null,
           }),
         }
       );
@@ -166,7 +172,7 @@ export default function DiningHubDashboard() {
 
       toast.success(`Hotel "${form.hotelName}" created`);
       setShowCreate(false);
-      setForm({ hotelName: '', slug: '', adminEmail: '', adminPassword: '', confirmPassword: '' });
+      setForm({ hotelName: '', slug: '', adminEmail: '', adminPassword: '', confirmPassword: '', address: '', phone: '', tagline: '' });
       await loadHotels();
     } catch (e: any) {
       toast.error(e.message || 'Failed to create hotel');
@@ -383,6 +389,33 @@ export default function DiningHubDashboard() {
                 onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                 placeholder="••••••••"
                 minLength={6}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                placeholder="Street, City"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="+91 ..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tagline">Tagline</Label>
+              <Input
+                id="tagline"
+                value={form.tagline}
+                onChange={(e) => setForm({ ...form, tagline: e.target.value })}
+                placeholder="e.g. Authentic South Indian since 1985"
               />
             </div>
           </div>

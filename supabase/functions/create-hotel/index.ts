@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    const { hotelName, hotelSlug, managerEmail, managerPassword, managerName } = await req.json()
+    const { hotelName, hotelSlug, managerEmail, managerPassword, managerName, address, phone, tagline } = await req.json()
     if (!hotelName || !hotelSlug || !managerEmail || !managerPassword) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -73,7 +73,15 @@ Deno.serve(async (req) => {
     // 1) Create hotel
     const { data: hotel, error: hotelErr } = await supabaseAdmin
       .from('hotels')
-      .insert({ name: hotelName, slug: hotelSlug, created_by: caller.id, is_active: true })
+      .insert({
+        name: hotelName,
+        slug: hotelSlug,
+        created_by: caller.id,
+        is_active: true,
+        address: address || null,
+        phone: phone || null,
+        tagline: tagline || null,
+      })
       .select().single()
     if (hotelErr || !hotel) {
       return new Response(JSON.stringify({ error: hotelErr?.message || 'Failed to create hotel' }),
