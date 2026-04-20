@@ -20,7 +20,8 @@ export function useSessionResume() {
 
   useEffect(() => {
     if (authLoading || ordersLoading) return;
-    if (!user || !currentOrder) return;
+    // Guests are anonymous now — resume based on currentOrder regardless of `user`
+    if (!currentOrder) return;
 
     const orderStage = (currentOrder as any).order_stage;
 

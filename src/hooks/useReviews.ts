@@ -38,8 +38,6 @@ export function useReviews() {
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchReviews = useCallback(async () => {
-    if (!user) return;
-    
     // Only managers can view all reviews
     if (!isManager) {
       setReviews([]);
@@ -104,7 +102,6 @@ export function useReviews() {
     website_rating?: number | null;
     review_text?: string | null;
   }) => {
-    if (!user) throw new Error('User not authenticated');
     if (!hotelId) throw new Error('No hotel context for review');
     
     const insertData: ReviewInsert = {
