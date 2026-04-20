@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHotelContext } from '@/hooks/useHotelContext';
+import { getDeviceId } from '@/hooks/useDevice';
 import type { Database } from '@/integrations/supabase/types';
 
 type OrderRow = Database['public']['Tables']['orders']['Row'];
@@ -30,31 +31,34 @@ export function useOrders() {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const deviceId = getDeviceId();
+
   const fetchOrders = useCallback(async () => {
-    if (!user) return;
-    
     setIsLoading(true);
     try {
       let query = supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
-      
-      // Customers only need their own orders — much faster query
-      if (!isManager) {
+
+      if (user && isManager) {
+        // Manager sees all orders for their hotel (RLS handles scoping)
+      } else if (user) {
+        // Logged-in customer (rare now) — by user_id
         query = query.eq('user_id', user.id).limit(20);
+      } else {
+        // Anonymous guest — by device_id
+        query = query.eq('device_id', deviceId).limit(20);
       }
 
       const { data, error } = await query;
-      
+
       if (error) throw error;
       setOrders((data || []) as Order[]);
-      
-      // Set current order (most recent active order for customer)
+
       if (!isManager && data && data.length > 0) {
-        const activeOrder = data.find(o => 
-          o.order_stage !== 'completed' && 
-          !o.payment_confirmed
+        const activeOrder = data.find(
+          (o) => o.order_stage !== 'completed' && !o.payment_confirmed
         );
         setCurrentOrder((activeOrder as Order) || null);
       }
@@ -63,50 +67,44 @@ export function useOrders() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, isManager]);
+  }, [user, isManager, deviceId]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Subscribe to realtime updates — stable subscription, no dependency on currentOrder
+  // Realtime updates
   useEffect(() => {
-    if (!user) return;
-
     const channel = supabase
       .channel('orders-changes')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-        },
+        { event: '*', schema: 'public', table: 'orders' },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            setOrders((prev) => [payload.new as Order, ...prev]);
+            const row = payload.new as Order;
+            // Only ingest rows relevant to this client
+            if (isManager || row.user_id === user?.id || row.device_id === deviceId) {
+              setOrders((prev) => [row, ...prev]);
+            }
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as Order;
-            setOrders((prev) =>
-              prev.map((order) =>
-                order.id === updated.id ? updated : order
-              )
-            );
-            // Update current order using functional setter to avoid stale ref
+            setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
             setCurrentOrder((prev) => {
               if (prev?.id === updated.id) {
-                // Trigger haptic feedback for confirmation
-                if (updated.order_status === 'Confirmed' && prev.order_status !== 'Confirmed') {
-                  if ('vibrate' in navigator) {
-                    navigator.vibrate([100, 50, 100]);
-                  }
+                if (
+                  updated.order_status === 'Confirmed' &&
+                  prev.order_status !== 'Confirmed' &&
+                  'vibrate' in navigator
+                ) {
+                  navigator.vibrate([100, 50, 100]);
                 }
                 return updated;
               }
               return prev;
             });
           } else if (payload.eventType === 'DELETE') {
-            setOrders((prev) => prev.filter((order) => order.id !== (payload.old as Order).id));
+            setOrders((prev) => prev.filter((o) => o.id !== (payload.old as Order).id));
           }
         }
       )
@@ -115,13 +113,14 @@ export function useOrders() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, isManager, deviceId]);
 
-  const createOrder = async (orderData: Omit<OrderInsert, 'user_id'> & { 
-    order_type?: 'dine-in' | 'parcel';
-    seats?: string[];
-  }) => {
-    if (!user) throw new Error('User not authenticated');
+  const createOrder = async (
+    orderData: Omit<OrderInsert, 'user_id'> & {
+      order_type?: 'dine-in' | 'parcel';
+      seats?: string[];
+    }
+  ) => {
     if (!hotelId) throw new Error('No hotel selected. Please scan a QR code at your table.');
 
     const baseItems = orderData.ordered_items || [];
@@ -130,7 +129,8 @@ export function useOrders() {
       .from('orders')
       .insert({
         ...orderData,
-        user_id: user.id,
+        user_id: user?.id ?? null,
+        device_id: deviceId,
         hotel_id: hotelId,
         order_type: orderData.order_type || 'dine-in',
         seats: orderData.seats || [],
@@ -147,9 +147,6 @@ export function useOrders() {
   };
 
   const addItemsToOrder = async (orderId: string, newItems: any[], additionalAmount: number) => {
-    if (!user) throw new Error('User not authenticated');
-
-    // Get current order
     const { data: currentOrderData, error: fetchError } = await supabase
       .from('orders')
       .select('*')
@@ -160,29 +157,20 @@ export function useOrders() {
 
     const existingItems = (currentOrderData.ordered_items as any[]) || [];
     const existingExtra = ((currentOrderData as any).extra_items as any[]) || [];
-    
-    // Merge items - add quantities if same item exists
+
     const mergedItems = [...existingItems];
-    newItems.forEach(newItem => {
-      const existingIndex = mergedItems.findIndex(item => item.name === newItem.name);
-      if (existingIndex >= 0) {
-        mergedItems[existingIndex].quantity += newItem.quantity;
-      } else {
-        mergedItems.push(newItem);
-      }
+    newItems.forEach((newItem) => {
+      const idx = mergedItems.findIndex((item) => item.name === newItem.name);
+      if (idx >= 0) mergedItems[idx].quantity += newItem.quantity;
+      else mergedItems.push(newItem);
     });
 
-    // Track extra items with timestamp for manager visibility
-    const extraItemsWithTime = newItems.map(item => ({
-      ...item,
-      addedAt: new Date().toISOString(),
-    }));
-
+    const extraItemsWithTime = newItems.map((item) => ({ ...item, addedAt: new Date().toISOString() }));
     const newTotal = currentOrderData.total_amount + additionalAmount;
 
     const { error } = await supabase
       .from('orders')
-      .update({ 
+      .update({
         ordered_items: mergedItems,
         total_amount: newTotal,
         extra_items: [...existingExtra, ...extraItemsWithTime],
@@ -192,10 +180,8 @@ export function useOrders() {
     if (error) throw error;
   };
 
-  // Server accepts an order — marks server assignment and notifies downstream dashboards
   const serverAcceptOrder = async (orderId: string, serverUserId: string, serverName: string) => {
     const nowIso = new Date().toISOString();
-
     const { error } = await supabase
       .from('orders')
       .update({
@@ -207,11 +193,9 @@ export function useOrders() {
         order_stage: 'order_confirmed',
       } as any)
       .eq('id', orderId);
-
     if (error) throw error;
   };
 
-  // Kitchen accepts an order — final kitchen acknowledgement for preparation
   const kitchenAcceptOrder = async (orderId: string, kitchenName: string) => {
     const { error } = await supabase
       .from('orders')
@@ -223,103 +207,71 @@ export function useOrders() {
         order_stage: 'order_confirmed',
       } as any)
       .eq('id', orderId);
-
     if (error) throw error;
   };
 
-  // Kitchen marks order as prepared
   const kitchenMarkPrepared = async (orderId: string) => {
     const { error } = await supabase
       .from('orders')
-      .update({
-        kitchen_prepared_at: new Date().toISOString(),
-      } as any)
+      .update({ kitchen_prepared_at: new Date().toISOString() } as any)
       .eq('id', orderId);
-
     if (error) throw error;
   };
 
   const confirmOrder = async (orderId: string, waitTimeMinutes?: number) => {
-    const updateData: any = { 
+    const updateData: any = {
       order_status: 'Confirmed',
       confirmed_at: new Date().toISOString(),
       order_stage: 'order_confirmed',
     };
-    
     if (waitTimeMinutes !== undefined && waitTimeMinutes > 0) {
       updateData.wait_time_minutes = waitTimeMinutes;
     }
-
-    const { error } = await supabase
-      .from('orders')
-      .update(updateData)
-      .eq('id', orderId);
-
+    const { error } = await supabase.from('orders').update(updateData).eq('id', orderId);
     if (error) throw error;
   };
 
   const cancelOrder = async (orderId: string) => {
-    const { error } = await supabase
-      .from('orders')
-      .update({ order_status: 'Cancelled' })
-      .eq('id', orderId);
-
+    const { error } = await supabase.from('orders').update({ order_status: 'Cancelled' }).eq('id', orderId);
     if (error) throw error;
   };
 
   const deleteOrder = async (orderId: string) => {
-    const { error } = await supabase
-      .from('orders')
-      .delete()
-      .eq('id', orderId);
-
+    const { error } = await supabase.from('orders').delete().eq('id', orderId);
     if (error) throw error;
-    setOrders((prev) => prev.filter((order) => order.id !== orderId));
+    setOrders((prev) => prev.filter((o) => o.id !== orderId));
   };
 
   const updatePayment = async (orderId: string, paymentMode: 'Cash' | 'Online') => {
-    const { error } = await supabase
-      .from('orders')
-      .update({ payment_mode: paymentMode })
-      .eq('id', orderId);
-
+    const { error } = await supabase.from('orders').update({ payment_mode: paymentMode }).eq('id', orderId);
     if (error) throw error;
   };
 
   const markEatingFinished = async (orderId: string) => {
     const { error } = await supabase
       .from('orders')
-      .update({ 
-        eating_finished: true,
-        order_stage: 'finished_eating',
-      } as any)
+      .update({ eating_finished: true, order_stage: 'finished_eating' } as any)
       .eq('id', orderId);
-
     if (error) throw error;
   };
 
   const confirmPayment = async (orderId: string, paymentMode: 'Cash' | 'Online') => {
     const { error } = await supabase
       .from('orders')
-      .update({ 
+      .update({
         payment_confirmed: true,
         payment_mode: paymentMode,
         order_stage: 'completed',
       } as any)
       .eq('id', orderId);
-
     if (error) throw error;
   };
 
   const updatePaymentIntent = async (orderId: string, intent: 'Cash' | 'UPI') => {
     const { error } = await supabase
       .from('orders')
-      .update({ 
-        payment_intent: intent,
-        order_stage: 'payment_selected',
-      } as any)
+      .update({ payment_intent: intent, order_stage: 'payment_selected' } as any)
       .eq('id', orderId);
-
     if (error) throw error;
   };
 
@@ -328,12 +280,10 @@ export function useOrders() {
       .from('orders')
       .update({ order_stage: stage } as any)
       .eq('id', orderId);
-
     if (error) throw error;
   };
 
   const deleteDayHistory = async (date: string) => {
-    // Delete all orders from a specific date
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(date);
@@ -346,8 +296,6 @@ export function useOrders() {
       .lte('created_at', endOfDay.toISOString());
 
     if (error) throw error;
-    
-    // Refresh orders
     await fetchOrders();
   };
 
@@ -382,15 +330,14 @@ export function useOrders() {
     if (error) throw error;
   };
 
-  // Get today's completed orders for summary
   const getTodayStats = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    const completedToday = orders.filter(o => {
-      const orderDate = new Date(o.created_at);
-      orderDate.setHours(0, 0, 0, 0);
-      return orderDate.getTime() === today.getTime() && o.payment_confirmed;
+
+    const completedToday = orders.filter((o) => {
+      const d = new Date(o.created_at);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime() === today.getTime() && o.payment_confirmed;
     });
 
     return {

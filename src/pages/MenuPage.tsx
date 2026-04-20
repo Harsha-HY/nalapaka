@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, LogOut, History, UtensilsCrossed } from 'lucide-react';
+import { Search, History, UtensilsCrossed } from 'lucide-react';
 import { useMenuItems, MenuItem } from '@/hooks/useMenuItems';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,21 +31,21 @@ const getCategoryLabel = (category: string, language: 'en' | 'kn'): string => {
 
 export default function MenuPage() {
   const { t, language } = useLanguage();
-  const { signOut, isManager, role } = useAuth();
-  const { hotelName } = useHotelContext();
+  const { isManager } = useAuth();
+  const { hotelName, hotelId } = useHotelContext();
   const { menuItems, isLoading: isMenuLoading } = useMenuItems();
   const { currentOrder } = useOrders();
   const navigate = useNavigate();
-  
+
   // Use session resume hook
   useSessionResume();
 
-  // Customers without QR scan still need a hotel — load first active one
+  // If a guest somehow lands without a hotel (typed /menu directly), pick a default
   useEffect(() => {
-    if (role === 'customer') {
+    if (!hotelId) {
       ensureGuestHotelLoaded();
     }
-  }, [role]);
+  }, [hotelId]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot>('all');
@@ -83,11 +83,6 @@ export default function MenuPage() {
     return groups;
   }, [filteredItems]);
 
-  const handleLogout = async () => {
-    await signOut();
-    navigate('/');
-  };
-
   // Check if customer has an active order
   const hasActiveOrder = currentOrder && 
     (currentOrder.order_status === 'Pending' || currentOrder.order_status === 'Confirmed') &&
@@ -119,8 +114,10 @@ export default function MenuPage() {
                 <UtensilsCrossed className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-foreground">Nalapaka</h1>
-                <p className="text-xs text-muted-foreground">Nanjangud</p>
+                <h1 className="text-xl font-bold text-foreground">{hotelName || 'Dining Hub'}</h1>
+                <p className="text-xs text-muted-foreground">
+                  {language === 'kn' ? 'ಮೆನು' : 'Menu'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -128,9 +125,6 @@ export default function MenuPage() {
                 <History className="h-5 w-5" />
               </Button>
               <LanguageToggle />
-              <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
-                <LogOut className="h-5 w-5" />
-              </Button>
             </div>
           </div>
 

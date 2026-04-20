@@ -11,37 +11,38 @@ export interface GuestHotel {
 }
 
 /**
- * Returns the hotel_id the current user is acting under.
- * - Staff (manager/server/kitchen) → from AuthContext.hotel
- * - Customers (guests) → from localStorage cache set by /guest/:slug entry
+ * Returns the hotel context for whoever is using the app right now.
+ * - Staff (manager / server / kitchen) → hotel from AuthContext
+ * - Customers (no role or 'customer') → hotel cached by /guest/:slug
+ *
+ * Customers do NOT need to be logged in.
  */
 export function useHotelContext() {
   const { hotel, role } = useAuth();
-  const [guestHotel, setGuestHotel] = useState<GuestHotel | null>(() => {
-    try {
-      const raw = localStorage.getItem(GUEST_HOTEL_KEY);
-      return raw ? (JSON.parse(raw) as GuestHotel) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [guestHotel, setGuestHotelState] = useState<GuestHotel | null>(() => readCache());
 
   useEffect(() => {
-    const onStorage = () => {
-      try {
-        const raw = localStorage.getItem(GUEST_HOTEL_KEY);
-        setGuestHotel(raw ? (JSON.parse(raw) as GuestHotel) : null);
-      } catch {
-        setGuestHotel(null);
-      }
+    const onStorage = (e: StorageEvent) => {
+      if (e.key && e.key !== GUEST_HOTEL_KEY) return;
+      setGuestHotelState(readCache());
     };
+    const onCustom = () => setGuestHotelState(readCache());
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener('dh-guest-hotel-changed', onCustom);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('dh-guest-hotel-changed', onCustom);
+    };
   }, []);
 
-  if (role === 'manager' || role === 'server' || role === 'kitchen') {
-    return { hotelId: hotel?.id ?? null, hotelName: hotel?.name ?? null, hotelSlug: hotel?.slug ?? null };
+  if (role === 'manager' || role === 'server' || role === 'kitchen' || role === 'super_admin') {
+    return {
+      hotelId: hotel?.id ?? null,
+      hotelName: hotel?.name ?? null,
+      hotelSlug: hotel?.slug ?? null,
+    };
   }
+
   return {
     hotelId: guestHotel?.id ?? null,
     hotelName: guestHotel?.name ?? null,
@@ -49,21 +50,31 @@ export function useHotelContext() {
   };
 }
 
+function readCache(): GuestHotel | null {
+  try {
+    const raw = localStorage.getItem(GUEST_HOTEL_KEY);
+    return raw ? (JSON.parse(raw) as GuestHotel) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function setGuestHotel(hotel: GuestHotel | null) {
   try {
     if (hotel) localStorage.setItem(GUEST_HOTEL_KEY, JSON.stringify(hotel));
     else localStorage.removeItem(GUEST_HOTEL_KEY);
+    window.dispatchEvent(new Event('dh-guest-hotel-changed'));
   } catch {}
 }
 
 /**
- * Picks a default hotel for a logged-in customer who arrived via /auth (no QR).
- * Caches the first active hotel so menu/orders work.
+ * If a customer somehow lands without a cached hotel, fall back to the first active one.
+ * Used by MenuPage as a safety net.
  */
 export async function ensureGuestHotelLoaded(): Promise<GuestHotel | null> {
   try {
-    const cached = localStorage.getItem(GUEST_HOTEL_KEY);
-    if (cached) return JSON.parse(cached) as GuestHotel;
+    const cached = readCache();
+    if (cached) return cached;
     const { data } = await supabase
       .from('hotels')
       .select('id, name, slug')

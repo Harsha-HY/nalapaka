@@ -48,30 +48,39 @@ export type Database = {
       }
       hotels: {
         Row: {
+          address: string | null
           created_at: string
           created_by: string
           id: string
           is_active: boolean
           name: string
+          phone: string | null
           slug: string
+          tagline: string | null
           updated_at: string
         }
         Insert: {
+          address?: string | null
           created_at?: string
           created_by: string
           id?: string
           is_active?: boolean
           name: string
+          phone?: string | null
           slug: string
+          tagline?: string | null
           updated_at?: string
         }
         Update: {
+          address?: string | null
           created_at?: string
           created_by?: string
           id?: string
           is_active?: boolean
           name?: string
+          phone?: string | null
           slug?: string
+          tagline?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -216,6 +225,7 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           customer_name: string
+          device_id: string | null
           eating_finished: boolean
           extra_items: Json | null
           hotel_id: string | null
@@ -237,7 +247,7 @@ export type Database = {
           table_number: string
           total_amount: number
           updated_at: string
-          user_id: string
+          user_id: string | null
           wait_time_minutes: number | null
         }
         Insert: {
@@ -249,6 +259,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           customer_name: string
+          device_id?: string | null
           eating_finished?: boolean
           extra_items?: Json | null
           hotel_id?: string | null
@@ -270,7 +281,7 @@ export type Database = {
           table_number: string
           total_amount?: number
           updated_at?: string
-          user_id: string
+          user_id?: string | null
           wait_time_minutes?: number | null
         }
         Update: {
@@ -282,6 +293,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           customer_name?: string
+          device_id?: string | null
           eating_finished?: boolean
           extra_items?: Json | null
           hotel_id?: string | null
@@ -303,7 +315,7 @@ export type Database = {
           table_number?: string
           total_amount?: number
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
           wait_time_minutes?: number | null
         }
         Relationships: [

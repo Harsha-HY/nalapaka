@@ -23,140 +23,91 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes — avoid refetching on every tab switch
-      refetchOnWindowFocus: false, // prevent re-fetch when switching tabs
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
       retry: 1,
     },
   },
 });
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
-  
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-  
-  return <>{children}</>;
-}
-
 // Manager-only route
 function ManagerRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading, role, roleLoading } = useAuth();
-  
-  if (isLoading || roleLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  
+  if (isLoading || roleLoading) return <SpinnerScreen />;
   if (!user) return <Navigate to="/" replace />;
   if (role !== 'manager') return <Navigate to="/" replace />;
-  
   return <>{children}</>;
 }
 
-// Server-only route
 function ServerRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading, role, roleLoading } = useAuth();
-  
-  if (isLoading || roleLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  
+  if (isLoading || roleLoading) return <SpinnerScreen />;
   if (!user) return <Navigate to="/" replace />;
   if (role !== 'server') return <Navigate to="/" replace />;
-  
   return <>{children}</>;
 }
 
-// Kitchen-only route
 function KitchenRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading, role, roleLoading } = useAuth();
-  
-  if (isLoading || roleLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  
+  if (isLoading || roleLoading) return <SpinnerScreen />;
   if (!user) return <Navigate to="/" replace />;
   if (role !== 'kitchen') return <Navigate to="/" replace />;
-  
   return <>{children}</>;
 }
 
-function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, role, roleLoading } = useAuth();
-  
-  if (isLoading || roleLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  
-  if (user && role) {
-    if (role === 'super_admin') return <Navigate to="/dining-hub" replace />;
-    if (role === 'manager') return <Navigate to="/manager" replace />;
-    if (role === 'server') return <Navigate to="/server" replace />;
-    if (role === 'kitchen') return <Navigate to="/kitchen" replace />;
-    return <Navigate to="/menu" replace />;
-  }
-  
-  return <>{children}</>;
-}
-
-// Super admin only route
 function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading, role, roleLoading } = useAuth();
-  if (isLoading || roleLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  if (isLoading || roleLoading) return <SpinnerScreen />;
   if (!user) return <Navigate to="/" replace />;
   if (role !== 'super_admin') return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
+// Auth landing — only redirect logged-in STAFF; guests stay public
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, role, roleLoading } = useAuth();
+  if (isLoading || roleLoading) return <SpinnerScreen />;
+
+  if (user && role) {
+    if (role === 'super_admin') return <Navigate to="/dining-hub" replace />;
+    if (role === 'manager') return <Navigate to="/manager" replace />;
+    if (role === 'server') return <Navigate to="/server" replace />;
+    if (role === 'kitchen') return <Navigate to="/kitchen" replace />;
+    // 'customer' role just falls through to the auth page (or could go to /menu)
+  }
+  return <>{children}</>;
+}
+
+function SpinnerScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  );
+}
+
 const AppRoutes = () => (
-  <>
-    <Routes>
-      <Route path="/" element={<PublicRoute><AuthPage /></PublicRoute>} />
-      <Route path="/guest" element={<GuestEntry />} />
-      <Route path="/guest/:hotelSlug" element={<GuestEntry />} />
-      <Route path="/menu" element={<ProtectedRoute><MenuPage /></ProtectedRoute>} />
-      <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
-      <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-      <Route path="/order-status" element={<ProtectedRoute><OrderStatusPage /></ProtectedRoute>} />
-      <Route path="/order-history" element={<ProtectedRoute><OrderHistoryPage /></ProtectedRoute>} />
-      <Route path="/manager" element={<ManagerRoute><ManagerDashboard /></ManagerRoute>} />
-      <Route path="/server" element={<ServerRoute><ServerDashboard /></ServerRoute>} />
-      <Route path="/kitchen" element={<KitchenRoute><KitchenDashboard /></KitchenRoute>} />
-      <Route path="/dining-hub" element={<SuperAdminRoute><DiningHubDashboard /></SuperAdminRoute>} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  </>
+  <Routes>
+    {/* Staff login */}
+    <Route path="/" element={<PublicRoute><AuthPage /></PublicRoute>} />
+
+    {/* Customer flow — fully public, no auth required */}
+    <Route path="/guest" element={<GuestEntry />} />
+    <Route path="/guest/:hotelSlug" element={<GuestEntry />} />
+    <Route path="/menu" element={<MenuPage />} />
+    <Route path="/cart" element={<CartPage />} />
+    <Route path="/checkout" element={<CheckoutPage />} />
+    <Route path="/order-status" element={<OrderStatusPage />} />
+    <Route path="/order-history" element={<OrderHistoryPage />} />
+
+    {/* Staff dashboards */}
+    <Route path="/manager" element={<ManagerRoute><ManagerDashboard /></ManagerRoute>} />
+    <Route path="/server" element={<ServerRoute><ServerDashboard /></ServerRoute>} />
+    <Route path="/kitchen" element={<KitchenRoute><KitchenDashboard /></KitchenRoute>} />
+    <Route path="/dining-hub" element={<SuperAdminRoute><DiningHubDashboard /></SuperAdminRoute>} />
+
+    <Route path="*" element={<NotFound />} />
+  </Routes>
 );
 
 const App = () => (
