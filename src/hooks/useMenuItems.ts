@@ -20,18 +20,20 @@ export function useMenuItems() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchMenuItems = useCallback(async () => {
+    // Wait until we know which hotel to load
+    if (!hotelId) {
+      setMenuItems([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('menu_items')
         .select('*')
+        .eq('hotel_id', hotelId)
         .order('category', { ascending: true });
-
-      // Scope to current hotel when known
-      if (hotelId) {
-        query = query.eq('hotel_id', hotelId);
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -57,6 +59,22 @@ export function useMenuItems() {
     fetchMenuItems();
   }, [fetchMenuItems]);
 
+  // Realtime: keep customer menu in sync the moment manager toggles availability
+  useEffect(() => {
+    if (!hotelId) return;
+    const channel = supabase
+      .channel(`menu-items-${hotelId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'menu_items', filter: `hotel_id=eq.${hotelId}` },
+        () => fetchMenuItems()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [hotelId, fetchMenuItems]);
+
   const toggleAvailability = useCallback(async (itemId: string, isAvailable: boolean) => {
     if (!isManager) return;
 
@@ -69,9 +87,7 @@ export function useMenuItems() {
       if (error) throw error;
 
       setMenuItems((prev) =>
-        prev.map((item) =>
-          item.id === itemId ? { ...item, isAvailable } : item
-        )
+        prev.map((item) => (item.id === itemId ? { ...item, isAvailable } : item))
       );
 
       return true;
