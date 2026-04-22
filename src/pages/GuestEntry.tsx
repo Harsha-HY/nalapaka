@@ -3,15 +3,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { setGuestHotel } from '@/hooks/useHotelContext';
 import { getDeviceId } from '@/hooks/useDevice';
+import { ensureAnonSession } from '@/hooks/useAnonAuth';
 import { Loader2 } from 'lucide-react';
 
 /**
  * GuestEntry: customer scans QR code → /guest/:hotelSlug
  *
- * NO sign-up, NO sign-in, NO permission prompt.
- * - Resolves hotel by slug, caches it for the device
- * - Ensures device_id exists (anonymous identity for orders)
- * - Goes straight to /menu
+ * NO sign-up, NO sign-in UI, NO permission prompt — but we DO silently
+ * create an anonymous Supabase session so RLS can protect this customer's
+ * orders by auth.uid() instead of a guessable device_id.
  */
 export default function GuestEntry() {
   const navigate = useNavigate();
@@ -23,8 +23,12 @@ export default function GuestEntry() {
 
     (async () => {
       try {
-        // Make sure this device has a stable id for orders
+        // Local profile id (still used for autofill of name/phone in checkout)
         getDeviceId();
+
+        // Silently create / restore an anonymous Supabase session BEFORE we
+        // navigate to /menu, so RLS-protected reads/writes succeed.
+        await ensureAnonSession();
 
         if (hotelSlug) {
           const { data: hotel, error } = await supabase

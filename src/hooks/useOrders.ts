@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHotelContext } from '@/hooks/useHotelContext';
 import { getDeviceId } from '@/hooks/useDevice';
+import { ensureAnonSession } from '@/hooks/useAnonAuth';
 import type { Database } from '@/integrations/supabase/types';
 
 type OrderRow = Database['public']['Tables']['orders']['Row'];
@@ -36,6 +37,11 @@ export function useOrders() {
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Customers (no role) need an anon session before they can read anything
+      if (!isManager) {
+        await ensureAnonSession();
+      }
+
       let query = supabase
         .from('orders')
         .select('*')
@@ -43,12 +49,10 @@ export function useOrders() {
 
       if (user && isManager) {
         // Manager sees all orders for their hotel (RLS handles scoping)
-      } else if (user) {
-        // Logged-in customer (rare now) — by user_id
-        query = query.eq('user_id', user.id).limit(20);
       } else {
-        // Anonymous guest — by device_id
-        query = query.eq('device_id', deviceId).limit(20);
+        // Customer (anon or real) — RLS already restricts to auth.uid(),
+        // but we still cap the row count for perf.
+        query = query.limit(20);
       }
 
       const { data, error } = await query;
@@ -67,53 +71,19 @@ export function useOrders() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, isManager, deviceId]);
+  }, [user, isManager]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Realtime updates
+  // Poll for order changes (realtime broadcast disabled for security — orders contain PII)
   useEffect(() => {
-    const channel = supabase
-      .channel('orders-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const row = payload.new as Order;
-            // Only ingest rows relevant to this client
-            if (isManager || row.user_id === user?.id || row.device_id === deviceId) {
-              setOrders((prev) => [row, ...prev]);
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            const updated = payload.new as Order;
-            setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
-            setCurrentOrder((prev) => {
-              if (prev?.id === updated.id) {
-                if (
-                  updated.order_status === 'Confirmed' &&
-                  prev.order_status !== 'Confirmed' &&
-                  'vibrate' in navigator
-                ) {
-                  navigator.vibrate([100, 50, 100]);
-                }
-                return updated;
-              }
-              return prev;
-            });
-          } else if (payload.eventType === 'DELETE') {
-            setOrders((prev) => prev.filter((o) => o.id !== (payload.old as Order).id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, isManager, deviceId]);
+    const interval = setInterval(() => {
+      fetchOrders();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [fetchOrders]);
 
   const createOrder = async (
     orderData: Omit<OrderInsert, 'user_id'> & {
@@ -123,14 +93,20 @@ export function useOrders() {
   ) => {
     if (!hotelId) throw new Error('No hotel selected. Please scan a QR code at your table.');
 
+    // Make sure we have a Supabase session (anon for guests). Without it the
+    // RLS INSERT policy on orders will reject the row.
+    await ensureAnonSession();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) throw new Error('Could not establish a session. Please try again.');
+
     const baseItems = orderData.ordered_items || [];
 
     const { data, error } = await supabase
       .from('orders')
       .insert({
         ...orderData,
-        user_id: user?.id ?? null,
-        device_id: deviceId,
+        user_id: authUser.id,
+        device_id: deviceId, // kept for analytics / cross-device tracking only
         hotel_id: hotelId,
         order_type: orderData.order_type || 'dine-in',
         seats: orderData.seats || [],

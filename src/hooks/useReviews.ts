@@ -64,28 +64,13 @@ export function useReviews() {
     fetchReviews();
   }, [fetchReviews]);
 
-  // Subscribe to realtime updates
+  // Poll for review changes (realtime broadcast disabled for security)
   useEffect(() => {
     if (!user || !isManager) return;
-
-    const channel = supabase
-      .channel('reviews-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'reviews',
-        },
-        () => {
-          fetchReviews();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const interval = setInterval(() => {
+      fetchReviews();
+    }, 10000);
+    return () => clearInterval(interval);
   }, [user, isManager, fetchReviews]);
 
   // Create review - this can be called by any authenticated user (customer)
