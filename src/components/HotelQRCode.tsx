@@ -12,9 +12,24 @@ interface HotelQRCodeProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// The PUBLISHED customer URL. The QR must NEVER point at the Lovable editor
+// preview origin (id-preview--*.lovable.app) — scanning that prompts a Lovable
+// login. We always pin the QR to the public published origin.
+const PUBLISHED_ORIGIN = 'https://nalapaka.lovable.app';
+
+function getPublicOrigin(): string {
+  if (typeof window === 'undefined') return PUBLISHED_ORIGIN;
+  const host = window.location.hostname;
+  // If we're inside the Lovable editor preview, force the published origin.
+  if (host.includes('id-preview--') || host.includes('lovableproject.com') || host === 'localhost' || host.startsWith('127.')) {
+    return PUBLISHED_ORIGIN;
+  }
+  return window.location.origin;
+}
+
 export function HotelQRCode({ hotelName, hotelSlug, open, onOpenChange }: HotelQRCodeProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const guestUrl = `${window.location.origin}/guest/${hotelSlug}`;
+  const guestUrl = `${getPublicOrigin()}/guest/${hotelSlug}`;
 
   const handleDownload = () => {
     const canvas = canvasRef.current?.querySelector('canvas');
