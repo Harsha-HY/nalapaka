@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/hooks/useOrders';
 import { useSessionResume } from '@/hooks/useSessionResume';
 import { useHotelContext, ensureGuestHotelLoaded } from '@/hooks/useHotelContext';
+import { ensureAnonSession } from '@/hooks/useAnonAuth';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { FloatingCart } from '@/components/FloatingCart';
 import { OrderStatusBanner } from '@/components/OrderStatusBanner';
@@ -41,11 +42,15 @@ export default function MenuPage() {
   useSessionResume();
 
   // If a guest somehow lands without a hotel (typed /menu directly), pick a default
+  // and silently establish an anonymous Supabase session for RLS-protected writes.
   useEffect(() => {
+    if (!isManager) {
+      ensureAnonSession();
+    }
     if (!hotelId) {
       ensureGuestHotelLoaded();
     }
-  }, [hotelId]);
+  }, [hotelId, isManager]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot>('all');
