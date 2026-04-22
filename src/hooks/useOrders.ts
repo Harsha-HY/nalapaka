@@ -77,47 +77,13 @@ export function useOrders() {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Realtime updates
+  // Poll for order changes (realtime broadcast disabled for security — orders contain PII)
   useEffect(() => {
-    const channel = supabase
-      .channel('orders-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const row = payload.new as Order;
-            // Only ingest rows relevant to this client
-            if (isManager || row.user_id === user?.id) {
-              setOrders((prev) => [row, ...prev]);
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            const updated = payload.new as Order;
-            setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
-            setCurrentOrder((prev) => {
-              if (prev?.id === updated.id) {
-                if (
-                  updated.order_status === 'Confirmed' &&
-                  prev.order_status !== 'Confirmed' &&
-                  'vibrate' in navigator
-                ) {
-                  navigator.vibrate([100, 50, 100]);
-                }
-                return updated;
-              }
-              return prev;
-            });
-          } else if (payload.eventType === 'DELETE') {
-            setOrders((prev) => prev.filter((o) => o.id !== (payload.old as Order).id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, isManager]);
+    const interval = setInterval(() => {
+      fetchOrders();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [fetchOrders]);
 
   const createOrder = async (
     orderData: Omit<OrderInsert, 'user_id'> & {
