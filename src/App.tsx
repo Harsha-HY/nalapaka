@@ -19,6 +19,7 @@ import ServerDashboard from "./pages/ServerDashboard";
 import KitchenDashboard from "./pages/KitchenDashboard";
 import DiningHubDashboard from "./pages/DiningHubDashboard";
 import NotFound from "./pages/NotFound";
+import { VoiceAssistant } from "@/components/VoiceAssistant";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -120,6 +121,7 @@ const App = () => (
           <AuthProvider>
             <CartProvider>
               <AppRoutes />
+              <VoiceAssistant />
             </CartProvider>
           </AuthProvider>
         </BrowserRouter>

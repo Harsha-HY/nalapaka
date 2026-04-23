@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_specials: {
+        Row: {
+          created_at: string
+          hotel_id: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          name_kn: string | null
+          note: string | null
+          price: number
+          special_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hotel_id?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          name_kn?: string | null
+          note?: string | null
+          price?: number
+          special_date?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hotel_id?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          name_kn?: string | null
+          note?: string | null
+          price?: number
+          special_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_specials_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "hotels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotel_members: {
         Row: {
           created_at: string
@@ -175,9 +225,11 @@ export type Database = {
           hotel_id: string | null
           id: string
           is_available: boolean
+          is_special: boolean
           name: string
           name_kn: string
           price: number
+          special_note: string | null
           time_slot: string
           updated_at: string
         }
@@ -187,9 +239,11 @@ export type Database = {
           hotel_id?: string | null
           id: string
           is_available?: boolean
+          is_special?: boolean
           name: string
           name_kn: string
           price: number
+          special_note?: string | null
           time_slot: string
           updated_at?: string
         }
@@ -199,9 +253,11 @@ export type Database = {
           hotel_id?: string | null
           id?: string
           is_available?: boolean
+          is_special?: boolean
           name?: string
           name_kn?: string
           price?: number
+          special_note?: string | null
           time_slot?: string
           updated_at?: string
         }

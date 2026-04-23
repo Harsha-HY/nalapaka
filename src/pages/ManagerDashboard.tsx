@@ -43,13 +43,14 @@ import { FoodSalesSummary } from '@/components/FoodSalesSummary';
 import { AccountHandlingSection } from '@/components/AccountHandlingSection';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { AnalyticsSection } from '@/components/AnalyticsSection';
+import { TodaysSpecialManager } from '@/components/TodaysSpecialManager';
 // QRCodePayment removed from manager - manager only sees text for UPI
 import { printKitchenSlip, printBill } from '@/components/KitchenSlipPrint';
 import { getFoodThumbnail } from '@/data/foodImages';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-type DashboardSection = 'orders' | 'menu' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics';
+type DashboardSection = 'orders' | 'menu' | 'specials' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics';
 
 export default function ManagerDashboard() {
   const { language } = useLanguage();
@@ -290,6 +291,14 @@ export default function ManagerDashboard() {
               Menu Control
             </Button>
             <Button 
+              variant={activeSection === 'specials' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('specials')}
+              className={activeSection === 'specials' ? 'shadow-sm' : ''}
+            >
+              ✨ Today's Special
+            </Button>
+            <Button 
               variant={activeSection === 'history' ? 'default' : 'outline'} 
               size="sm"
               onClick={() => setActiveSection('history')}
@@ -471,6 +480,13 @@ export default function ManagerDashboard() {
                   </Card>
                 );
               })}
+            </div>
+          )}
+
+          {/* Today's Special Section */}
+          {activeSection === 'specials' && (
+            <div>
+              <TodaysSpecialManager />
             </div>
           )}
 
