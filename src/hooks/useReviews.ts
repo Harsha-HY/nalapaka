@@ -64,13 +64,25 @@ export function useReviews() {
     fetchReviews();
   }, [fetchReviews]);
 
-  // Poll for review changes (realtime broadcast disabled for security)
+  // Realtime: instantly refresh when any review changes (manager only).
   useEffect(() => {
     if (!user || !isManager) return;
-    const interval = setInterval(() => {
-      fetchReviews();
-    }, 10000);
-    return () => clearInterval(interval);
+    const channel = supabase
+      .channel('reviews-live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reviews' },
+        () => fetchReviews()
+      )
+      .subscribe();
+
+    // Safety-net poll
+    const interval = setInterval(() => fetchReviews(), 30000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, [user, isManager, fetchReviews]);
 
   // Create review - this can be called by any authenticated user (customer)
