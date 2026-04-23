@@ -77,12 +77,27 @@ export function useOrders() {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Poll for order changes (realtime broadcast disabled for security — orders contain PII)
+  // Realtime: instantly refresh whenever any order row changes.
+  // RLS still gates which rows each subscriber actually receives.
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchOrders();
-    }, 5000);
-    return () => clearInterval(interval);
+    const channel = supabase
+      .channel('orders-live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => {
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    // Lightweight safety-net poll (every 20s) in case a realtime event is missed
+    const interval = setInterval(() => fetchOrders(), 20000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, [fetchOrders]);
 
   const createOrder = async (
