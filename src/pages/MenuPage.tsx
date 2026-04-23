@@ -16,6 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TodaysSpecialStrip } from '@/components/TodaysSpecialStrip';
+import { Recommendations } from '@/components/Recommendations';
 
 type TimeSlot = 'all' | 'morning' | 'afternoon' | 'evening' | 'night';
 type Category = 'all' | 'south-indian' | 'north-indian' | 'chinese' | 'tandoor';
@@ -170,6 +172,8 @@ export default function MenuPage() {
 
       {/* Menu items */}
       <main className="flex-1 container py-4 pb-28 px-3">
+        <TodaysSpecialStrip />
+        <Recommendations />
         {isMenuLoading ? (
           <div className="grid grid-cols-2 gap-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (

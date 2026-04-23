@@ -11,6 +11,8 @@ export interface MenuItem {
   category: 'south-indian' | 'north-indian' | 'chinese' | 'tandoor';
   timeSlot: 'morning' | 'afternoon' | 'evening' | 'night' | 'all';
   isAvailable: boolean;
+  is_special?: boolean;
+  special_note?: string | null;
 }
 
 export function useMenuItems() {
@@ -37,7 +39,7 @@ export function useMenuItems() {
 
       if (error) throw error;
 
-      const items: MenuItem[] = (data || []).map((item) => ({
+      const items: MenuItem[] = (data || []).map((item: any) => ({
         id: item.id,
         name: item.name,
         nameKn: item.name_kn,
@@ -45,6 +47,8 @@ export function useMenuItems() {
         category: item.category as MenuItem['category'],
         timeSlot: item.time_slot as MenuItem['timeSlot'],
         isAvailable: item.is_available,
+        is_special: item.is_special ?? false,
+        special_note: item.special_note ?? null,
       }));
 
       setMenuItems(items);

@@ -43,13 +43,14 @@ import { FoodSalesSummary } from '@/components/FoodSalesSummary';
 import { AccountHandlingSection } from '@/components/AccountHandlingSection';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { AnalyticsSection } from '@/components/AnalyticsSection';
+import { TodaysSpecialManager } from '@/components/TodaysSpecialManager';
 // QRCodePayment removed from manager - manager only sees text for UPI
 import { printKitchenSlip, printBill } from '@/components/KitchenSlipPrint';
 import { getFoodThumbnail } from '@/data/foodImages';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-type DashboardSection = 'orders' | 'menu' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics';
+type DashboardSection = 'orders' | 'menu' | 'specials' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics';
 
 export default function ManagerDashboard() {
   const { language } = useLanguage();
