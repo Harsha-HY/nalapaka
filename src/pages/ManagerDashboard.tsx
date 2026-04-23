@@ -291,6 +291,14 @@ export default function ManagerDashboard() {
               Menu Control
             </Button>
             <Button 
+              variant={activeSection === 'specials' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('specials')}
+              className={activeSection === 'specials' ? 'shadow-sm' : ''}
+            >
+              ✨ Today's Special
+            </Button>
+            <Button 
               variant={activeSection === 'history' ? 'default' : 'outline'} 
               size="sm"
               onClick={() => setActiveSection('history')}
@@ -472,6 +480,13 @@ export default function ManagerDashboard() {
                   </Card>
                 );
               })}
+            </div>
+          )}
+
+          {/* Today's Special Section */}
+          {activeSection === 'specials' && (
+            <div>
+              <TodaysSpecialManager />
             </div>
           )}
 
