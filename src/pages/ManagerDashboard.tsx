@@ -50,7 +50,7 @@ import { getFoodThumbnail } from '@/data/foodImages';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-type DashboardSection = 'orders' | 'menu' | 'specials' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics';
+type DashboardSection = 'orders' | 'menu' | 'specials' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics' | 'payments';
 
 export default function ManagerDashboard() {
   const { language } = useLanguage();
