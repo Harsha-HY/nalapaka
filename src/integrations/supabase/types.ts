@@ -108,6 +108,8 @@ export type Database = {
           slug: string
           tagline: string | null
           updated_at: string
+          upi_id: string | null
+          upi_name: string | null
         }
         Insert: {
           address?: string | null
@@ -120,6 +122,8 @@ export type Database = {
           slug: string
           tagline?: string | null
           updated_at?: string
+          upi_id?: string | null
+          upi_name?: string | null
         }
         Update: {
           address?: string | null
@@ -132,6 +136,8 @@ export type Database = {
           slug?: string
           tagline?: string | null
           updated_at?: string
+          upi_id?: string | null
+          upi_name?: string | null
         }
         Relationships: []
       }

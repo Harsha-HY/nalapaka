@@ -44,13 +44,14 @@ import { AccountHandlingSection } from '@/components/AccountHandlingSection';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { AnalyticsSection } from '@/components/AnalyticsSection';
 import { TodaysSpecialManager } from '@/components/TodaysSpecialManager';
+import { PaymentSettings } from '@/components/PaymentSettings';
 // QRCodePayment removed from manager - manager only sees text for UPI
 import { printKitchenSlip, printBill } from '@/components/KitchenSlipPrint';
 import { getFoodThumbnail } from '@/data/foodImages';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-type DashboardSection = 'orders' | 'menu' | 'specials' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics';
+type DashboardSection = 'orders' | 'menu' | 'specials' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics' | 'payments';
 
 export default function ManagerDashboard() {
   const { language } = useLanguage();
@@ -343,6 +344,15 @@ export default function ManagerDashboard() {
               <BarChart3 className="h-4 w-4 mr-1" />
               Analytics
             </Button>
+            <Button 
+              variant={activeSection === 'payments' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('payments')}
+              className={activeSection === 'payments' ? 'shadow-sm' : ''}
+            >
+              <Smartphone className="h-4 w-4 mr-1" />
+              Payments
+            </Button>
           </div>
 
           {/* Reset All Tables Button */}
@@ -527,6 +537,11 @@ export default function ManagerDashboard() {
             <div>
               <AnalyticsSection orders={orders} />
             </div>
+          )}
+
+          {/* Payment Settings Section */}
+          {activeSection === 'payments' && hotel?.id && (
+            <PaymentSettings hotelId={hotel.id} hotelName={hotel.name} />
           )}
         </main>
       </div>
