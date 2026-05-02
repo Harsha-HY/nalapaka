@@ -2,80 +2,100 @@ import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { Card, CardContent } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useHotelContext } from '@/hooks/useHotelContext';
+import { useHotelUpi, buildUpiUri } from '@/hooks/useHotelUpi';
+import { AlertCircle } from 'lucide-react';
 
 interface QRCodePaymentProps {
   amount: number;
   orderId: string;
   size?: number;
   showCard?: boolean;
+  /** Override the hotel from context (e.g. for ServerDashboard which uses staff hotel anyway) */
+  hotelId?: string;
 }
 
-// UPI ID for payment
-const UPI_ID = '8951525788@ybl';
-const UPI_NAME = 'Harsha H Y';
-
-export function QRCodePayment({ amount, orderId, size = 200, showCard = true }: QRCodePaymentProps) {
+export function QRCodePayment({ amount, orderId, size = 200, showCard = true, hotelId: hotelIdProp }: QRCodePaymentProps) {
   const { language } = useLanguage();
+  const { hotelId: ctxHotelId } = useHotelContext();
+  const hotelId = hotelIdProp ?? ctxHotelId ?? null;
+  const { upi, loading } = useHotelUpi(hotelId);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState(false);
 
-  // Generate UPI URI
-  const upiUri = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&am=${amount}&cu=INR&tn=Order-${orderId.slice(0, 8)}`;
+  const upiId = upi?.upi_id?.trim() || null;
+  const payeeName = upi?.upi_name?.trim() || 'Merchant';
+  const upiUri = upiId ? buildUpiUri(upiId, payeeName, amount, orderId) : null;
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !upiUri) return;
 
-    QRCode.toCanvas(canvas, upiUri, {
-      width: size,
-      margin: 2,
-      color: {
-        dark: '#000000',
-        light: '#ffffff',
-      },
-    }, (err) => {
-      if (err) {
-        console.error('QR generation error:', err);
-        setError(true);
+    QRCode.toCanvas(
+      canvas,
+      upiUri,
+      { width: size, margin: 2, color: { dark: '#000000', light: '#ffffff' } },
+      (err) => {
+        if (err) {
+          console.error('QR generation error:', err);
+          setError(true);
+        }
       }
-    });
+    );
   }, [upiUri, size]);
 
   const content = (
     <div className="flex flex-col items-center gap-3">
-      {error ? (
+      {!upiId && !loading ? (
+        <div className="w-full p-4 rounded-lg bg-destructive/10 border border-destructive/30 flex flex-col items-center text-center gap-2">
+          <AlertCircle className="h-6 w-6 text-destructive" />
+          <p className="text-sm text-destructive font-medium">
+            {language === 'kn'
+              ? 'UPI ಇನ್ನೂ ಸಂರಚಿಸಲಾಗಿಲ್ಲ'
+              : 'UPI not configured for this hotel'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {language === 'kn'
+              ? 'ಮ್ಯಾನೇಜರ್ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ನಲ್ಲಿ UPI ID ಸೇರಿಸಿ'
+              : 'Manager: add UPI ID in Dashboard → Payment Settings'}
+          </p>
+        </div>
+      ) : error ? (
         <div className="w-full h-[200px] flex items-center justify-center bg-muted rounded-lg">
           <p className="text-sm text-muted-foreground">QR code unavailable</p>
         </div>
       ) : (
-        <canvas
-          ref={canvasRef}
-          className="rounded-lg"
-        />
+        <>
+          <canvas ref={canvasRef} className="rounded-lg" />
+          <p className="text-sm text-muted-foreground text-center">
+            {language === 'kn'
+              ? `QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ₹${amount} ಪಾವತಿಸಿ`
+              : `Scan to pay ₹${amount} to ${payeeName}`}
+          </p>
+        </>
       )}
-      <p className="text-sm text-muted-foreground text-center">
-        {language === 'kn' 
-          ? `QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ₹${amount} ಪಾವತಿಸಿ`
-          : `Scan this QR code to pay ₹${amount}`
-        }
-      </p>
     </div>
   );
 
-  if (!showCard) {
-    return content;
-  }
+  if (!showCard) return content;
 
   return (
     <Card className="shadow-soft border-0 bg-white dark:bg-card">
-      <CardContent className="p-4">
-        {content}
-      </CardContent>
+      <CardContent className="p-4">{content}</CardContent>
     </Card>
   );
 }
 
-// Export the UPI URI generator for use elsewhere
-export function generateUPIUri(amount: number, orderId: string): string {
-  return `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&am=${amount}&cu=INR&tn=Order-${orderId.slice(0, 8)}`;
+/**
+ * Build a UPI deep link for a given hotel. Returns null if hotel UPI is not configured.
+ * Caller is responsible for handling the null case (e.g. show an error message).
+ */
+export function buildHotelUpiUri(
+  hotelUpiId: string | null | undefined,
+  hotelUpiName: string | null | undefined,
+  amount: number,
+  orderId: string
+): string | null {
+  if (!hotelUpiId || !hotelUpiId.trim()) return null;
+  return buildUpiUri(hotelUpiId.trim(), (hotelUpiName || 'Merchant').trim(), amount, orderId);
 }
