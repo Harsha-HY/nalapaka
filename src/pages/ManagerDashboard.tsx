@@ -538,6 +538,11 @@ export default function ManagerDashboard() {
               <AnalyticsSection orders={orders} />
             </div>
           )}
+
+          {/* Payment Settings Section */}
+          {activeSection === 'payments' && hotel?.id && (
+            <PaymentSettings hotelId={hotel.id} hotelName={hotel.name} />
+          )}
         </main>
       </div>
 
