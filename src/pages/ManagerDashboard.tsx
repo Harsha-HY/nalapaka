@@ -344,6 +344,15 @@ export default function ManagerDashboard() {
               <BarChart3 className="h-4 w-4 mr-1" />
               Analytics
             </Button>
+            <Button 
+              variant={activeSection === 'payments' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('payments')}
+              className={activeSection === 'payments' ? 'shadow-sm' : ''}
+            >
+              <Smartphone className="h-4 w-4 mr-1" />
+              Payments
+            </Button>
           </div>
 
           {/* Reset All Tables Button */}
