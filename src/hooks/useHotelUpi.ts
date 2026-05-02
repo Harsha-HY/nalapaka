@@ -20,13 +20,13 @@ export function useHotelUpi(hotelId?: string | null) {
 
   useEffect(() => {
     if (!hotelId) return;
-    if (cache.has(hotelId)) {
-      setData(cache.get(hotelId)!);
-      return;
-    }
     let cancelled = false;
-    setLoading(true);
-    (async () => {
+    const load = async (force = false) => {
+      if (!force && cache.has(hotelId)) {
+        setData(cache.get(hotelId)!);
+        return;
+      }
+      setLoading(true);
       const { data: row } = await supabase
         .from('hotels')
         .select('upi_id, upi_name')
@@ -41,9 +41,13 @@ export function useHotelUpi(hotelId?: string | null) {
         setData(value);
         setLoading(false);
       }
-    })();
+    };
+    load();
+    const onUpdate = () => load(true);
+    window.addEventListener('hotel-upi-updated', onUpdate);
     return () => {
       cancelled = true;
+      window.removeEventListener('hotel-upi-updated', onUpdate);
     };
   }, [hotelId]);
 
