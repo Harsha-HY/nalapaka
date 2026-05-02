@@ -22,6 +22,7 @@ export function PaymentSettings({ hotelId, hotelName }: PaymentSettingsProps) {
   const [initialUpiName, setInitialUpiName] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +40,7 @@ export function PaymentSettings({ hotelId, hotelName }: PaymentSettingsProps) {
       setUpiName(name);
       setInitialUpiId(id);
       setInitialUpiName(name);
+      setEditing(!id); // auto-edit if nothing saved yet
       setLoading(false);
     })();
     return () => {
@@ -67,10 +69,20 @@ export function PaymentSettings({ hotelId, hotelName }: PaymentSettingsProps) {
     }
     setInitialUpiId(trimmedId);
     setInitialUpiName(upiName.trim());
+    setEditing(false);
     toast.success('UPI settings saved — this hotel now receives payments to your UPI ID');
     // Force QR preview refresh
     window.dispatchEvent(new Event('hotel-upi-updated'));
   };
+
+  const handleCancel = () => {
+    setUpiId(initialUpiId);
+    setUpiName(initialUpiName);
+    setEditing(false);
+  };
+
+  // Saved (non-editing) view: green confirmation card with Change button
+  const showSavedView = !editing && initialUpiId && !loading;
 
   return (
     <div className="space-y-4">
@@ -81,57 +93,88 @@ export function PaymentSettings({ hotelId, hotelName }: PaymentSettingsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Enter the UPI ID for this hotel. All online payments scanned from this hotel's QR
-            code will go to this UPI account only.
-          </p>
-
-          <div className="space-y-2">
-            <Label htmlFor="upi-id">UPI ID</Label>
-            <Input
-              id="upi-id"
-              placeholder="9876543210@ybl"
-              value={upiId}
-              onChange={(e) => setUpiId(e.target.value)}
-              disabled={loading || saving}
-              autoComplete="off"
-            />
-            {!valid && (
-              <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" /> Format must be like name@bank (e.g. 9876543210@ybl)
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="upi-name">Payee Name (shown in customer's UPI app)</Label>
-            <Input
-              id="upi-name"
-              placeholder="e.g. Hotel Saraswati"
-              value={upiName}
-              onChange={(e) => setUpiName(e.target.value)}
-              disabled={loading || saving}
-              autoComplete="off"
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-xs text-muted-foreground">
-              {initialUpiId ? (
-                <span className="flex items-center gap-1 text-success">
-                  <CheckCircle2 className="h-3 w-3" /> UPI active: <strong>{initialUpiId}</strong>
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-destructive">
-                  <AlertCircle className="h-3 w-3" /> No UPI configured — customers cannot pay online yet
-                </span>
-              )}
+          {showSavedView ? (
+            <div className="rounded-lg border-2 border-success bg-success/10 p-4 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-6 w-6 text-success flex-shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-success">UPI saved & active</p>
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">UPI ID:</span>{' '}
+                    <strong className="font-mono">{initialUpiId}</strong>
+                  </p>
+                  {initialUpiName && (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Payee:</span> <strong>{initialUpiName}</strong>
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground pt-1">
+                    All online payments from this hotel's QR will go to this account.
+                  </p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                Change
+              </Button>
             </div>
-            <Button onClick={handleSave} disabled={!dirty || !valid || saving || loading}>
-              <Save className="h-4 w-4 mr-1" />
-              {saving ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Enter the UPI ID for this hotel. All online payments scanned from this hotel's QR
+                code will go to this UPI account only.
+              </p>
+
+              <div className="space-y-2">
+                <Label htmlFor="upi-id">UPI ID</Label>
+                <Input
+                  id="upi-id"
+                  placeholder="9876543210@ybl"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  disabled={loading || saving}
+                  autoComplete="off"
+                />
+                {!valid && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> Format must be like name@bank (e.g. 9876543210@ybl)
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="upi-name">Payee Name (shown in customer's UPI app)</Label>
+                <Input
+                  id="upi-name"
+                  placeholder="e.g. Hotel Saraswati"
+                  value={upiName}
+                  onChange={(e) => setUpiName(e.target.value)}
+                  disabled={loading || saving}
+                  autoComplete="off"
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs text-muted-foreground">
+                  {!initialUpiId && (
+                    <span className="flex items-center gap-1 text-destructive">
+                      <AlertCircle className="h-3 w-3" /> No UPI configured — customers cannot pay online yet
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {initialUpiId && (
+                    <Button variant="outline" onClick={handleCancel} disabled={saving}>
+                      Cancel
+                    </Button>
+                  )}
+                  <Button onClick={handleSave} disabled={!dirty || !valid || saving || loading}>
+                    <Save className="h-4 w-4 mr-1" />
+                    {saving ? 'Saving…' : 'Save'}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
