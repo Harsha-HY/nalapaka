@@ -44,6 +44,7 @@ import { AccountHandlingSection } from '@/components/AccountHandlingSection';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { AnalyticsSection } from '@/components/AnalyticsSection';
 import { TodaysSpecialManager } from '@/components/TodaysSpecialManager';
+import { PaymentSettings } from '@/components/PaymentSettings';
 // QRCodePayment removed from manager - manager only sees text for UPI
 import { printKitchenSlip, printBill } from '@/components/KitchenSlipPrint';
 import { getFoodThumbnail } from '@/data/foodImages';
