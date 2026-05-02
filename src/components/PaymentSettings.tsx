@@ -22,6 +22,7 @@ export function PaymentSettings({ hotelId, hotelName }: PaymentSettingsProps) {
   const [initialUpiName, setInitialUpiName] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +40,7 @@ export function PaymentSettings({ hotelId, hotelName }: PaymentSettingsProps) {
       setUpiName(name);
       setInitialUpiId(id);
       setInitialUpiName(name);
+      setEditing(!id); // auto-edit if nothing saved yet
       setLoading(false);
     })();
     return () => {
@@ -67,10 +69,20 @@ export function PaymentSettings({ hotelId, hotelName }: PaymentSettingsProps) {
     }
     setInitialUpiId(trimmedId);
     setInitialUpiName(upiName.trim());
+    setEditing(false);
     toast.success('UPI settings saved — this hotel now receives payments to your UPI ID');
     // Force QR preview refresh
     window.dispatchEvent(new Event('hotel-upi-updated'));
   };
+
+  const handleCancel = () => {
+    setUpiId(initialUpiId);
+    setUpiName(initialUpiName);
+    setEditing(false);
+  };
+
+  // Saved (non-editing) view: green confirmation card with Change button
+  const showSavedView = !editing && initialUpiId && !loading;
 
   return (
     <div className="space-y-4">
