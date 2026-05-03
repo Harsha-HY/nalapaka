@@ -48,6 +48,7 @@ import { PaymentSettings } from '@/components/PaymentSettings';
 // QRCodePayment removed from manager - manager only sees text for UPI
 import { printKitchenSlip, printBill } from '@/components/KitchenSlipPrint';
 import { getFoodThumbnail } from '@/data/foodImages';
+import { MenuItemImageUploader } from '@/components/MenuItemImageUploader';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -445,7 +446,7 @@ export default function ManagerDashboard() {
                         <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-0">
                           <div className="flex items-center gap-3 min-w-0 flex-1">
                             <img 
-                              src={getFoodThumbnail(item.id)} 
+                              src={(item as any).image_url || getFoodThumbnail(item.id)} 
                               alt={item.name}
                               className="w-10 h-10 rounded-md object-cover flex-shrink-0"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -459,6 +460,7 @@ export default function ManagerDashboard() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
+                            <MenuItemImageUploader itemId={item.id} hotelId={hotel?.id} onUploaded={refreshMenuItems} />
                             <Button
                               variant={item.isAvailable ? 'destructive' : 'default'}
                               size="sm"
