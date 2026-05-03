@@ -100,6 +100,11 @@ export default function CartPage() {
             </Card>
           ))}
         </div>
+
+        <PairingSuggestions
+          contextItems={items.map((i) => ({ id: i.id, name: i.name }))}
+          onAdd={(it) => addItem(it as any)}
+        />
       </main>
 
       {/* Footer with total and proceed button */}
