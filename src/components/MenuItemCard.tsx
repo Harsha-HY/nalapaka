@@ -13,6 +13,7 @@ interface MenuItem {
   category: string;
   timeSlot: string;
   isAvailable?: boolean;
+  image_url?: string | null;
 }
 
 interface MenuItemCardProps {
@@ -28,7 +29,7 @@ export function MenuItemCard({ item }: MenuItemCardProps) {
   const quantity = cartItem?.quantity || 0;
   const isAvailable = item.isAvailable !== false;
   const displayName = language === 'kn' ? item.nameKn : item.name;
-  const imageUrl = getFoodImage(item.id);
+  const imageUrl = item.image_url || getFoodImage(item.id);
 
   const cartMenuItem = {
     id: item.id,

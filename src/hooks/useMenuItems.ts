@@ -13,6 +13,7 @@ export interface MenuItem {
   isAvailable: boolean;
   is_special?: boolean;
   special_note?: string | null;
+  image_url?: string | null;
 }
 
 export function useMenuItems() {
@@ -49,6 +50,7 @@ export function useMenuItems() {
         isAvailable: item.is_available,
         is_special: item.is_special ?? false,
         special_note: item.special_note ?? null,
+        image_url: item.image_url ?? null,
       }));
 
       setMenuItems(items);
