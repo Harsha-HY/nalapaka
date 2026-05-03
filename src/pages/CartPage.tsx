@@ -4,9 +4,10 @@ import { useCart } from '@/contexts/CartContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { PairingSuggestions } from '@/components/PairingSuggestions';
 
 export default function CartPage() {
-  const { items, updateQuantity, removeItem, totalAmount, clearCart } = useCart();
+  const { items, updateQuantity, removeItem, totalAmount, clearCart, addItem } = useCart();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
 
@@ -99,6 +100,11 @@ export default function CartPage() {
             </Card>
           ))}
         </div>
+
+        <PairingSuggestions
+          contextItems={items.map((i) => ({ id: i.id, name: i.name }))}
+          onAdd={(it) => addItem(it as any)}
+        />
       </main>
 
       {/* Footer with total and proceed button */}

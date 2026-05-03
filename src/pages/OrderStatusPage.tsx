@@ -24,12 +24,15 @@ import { CountdownTimer } from '@/components/CountdownTimer';
 import { PaymentOptionsModal } from '@/components/PaymentOptionsModal';
 import { UPIPaymentModal } from '@/components/UPIPaymentModal';
 import { CustomerReviewModal } from '@/components/CustomerReviewModal';
+import { PairingSuggestions } from '@/components/PairingSuggestions';
+import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
 
 export default function OrderStatusPage() {
   const { t, language } = useLanguage();
   const { currentOrder, markEatingFinished, updatePaymentIntent } = useOrders();
   const { unlockSeatsByOrderId } = useLockedSeats();
+  const { addItem } = useCart();
   const navigate = useNavigate();
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [showUPIModal, setShowUPIModal] = useState(false);
@@ -321,16 +324,26 @@ export default function OrderStatusPage() {
           </CardContent>
         </Card>
 
-        {/* Add more items button */}
+        {/* Add more items button + smart pairings based on what they already ordered */}
         {isConfirmed && !eatingFinished && !paymentConfirmed && (
-          <Button
-            variant="outline"
-            className="w-full h-12 shadow-sm animate-slide-up"
-            onClick={() => navigate('/menu')}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            {language === 'kn' ? 'ಹೆಚ್ಚಿನ ಐಟಂಗಳನ್ನು ಸೇರಿಸಿ' : 'Add More Items'}
-          </Button>
+          <>
+            <PairingSuggestions
+              contextItems={orderedItems.map((i) => ({ id: (i as any).id || i.name, name: i.name }))}
+              title={language === 'kn' ? 'ಮುಂದೆ ಇದನ್ನು ಸೇರಿಸಿ' : 'Add this next'}
+              onAdd={(it) => {
+                addItem(it as any);
+                navigate('/cart');
+              }}
+            />
+            <Button
+              variant="outline"
+              className="w-full h-12 shadow-sm animate-slide-up"
+              onClick={() => navigate('/menu')}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {language === 'kn' ? 'ಹೆಚ್ಚಿನ ಐಟಂಗಳನ್ನು ಸೇರಿಸಿ' : 'Add More Items'}
+            </Button>
+          </>
         )}
 
         {/* Mark as finished eating */}
