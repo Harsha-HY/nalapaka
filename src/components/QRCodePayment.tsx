@@ -24,8 +24,9 @@ export function QRCodePayment({ amount, orderId, size = 200, showCard = true, ho
   const [error, setError] = useState(false);
 
   const upiId = upi?.upi_id?.trim() || null;
-  const payeeName = upi?.upi_name?.trim() || 'Merchant';
+  const payeeName = upi?.upi_name?.trim() || upi?.upi_bank_name?.trim() || 'Merchant';
   const upiUri = upiId ? buildUpiUri(upiId, payeeName, amount, orderId) : null;
+  const scannerUrl = upi?.upi_scanner_url?.trim() || null;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -60,6 +61,18 @@ export function QRCodePayment({ amount, orderId, size = 200, showCard = true, ho
               : 'Manager: add UPI ID in Dashboard → Payment Settings'}
           </p>
         </div>
+      ) : scannerUrl ? (
+        <>
+          <img
+            src={scannerUrl}
+            alt="Uploaded UPI scanner"
+            className="rounded-lg object-contain border bg-background"
+            style={{ width: size, height: size }}
+          />
+          <p className="text-sm text-muted-foreground text-center">
+            {language === 'kn' ? `₹${amount} ಪಾವತಿಸಿ` : `Pay ₹${amount} to ${upiId}`}
+          </p>
+        </>
       ) : error ? (
         <div className="w-full h-[200px] flex items-center justify-center bg-muted rounded-lg">
           <p className="text-sm text-muted-foreground">QR code unavailable</p>
