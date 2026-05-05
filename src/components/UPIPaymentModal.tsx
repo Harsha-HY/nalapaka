@@ -7,7 +7,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Smartphone, ExternalLink, AlertCircle } from 'lucide-react';
+import { Smartphone, AlertCircle } from 'lucide-react';
 import { QRCodePayment, buildHotelUpiUri } from '@/components/QRCodePayment';
 import { useHotelContext } from '@/hooks/useHotelContext';
 import { useHotelUpi } from '@/hooks/useHotelUpi';
@@ -26,6 +26,8 @@ export function UPIPaymentModal({ open, onClose, totalAmount, orderId, onPayment
   const { upi } = useHotelUpi(hotelId);
 
   const upiUrl = buildHotelUpiUri(upi?.upi_id, upi?.upi_name, totalAmount, orderId);
+  const upiId = upi?.upi_id?.trim() || '';
+  const bankName = upi?.upi_bank_name?.trim() || upi?.upi_name?.trim() || '';
 
   // Using <a> click rather than location.href avoids Android Chrome's
   // "unable to pay" / blocked navigation that happens when the upi:// scheme
@@ -36,7 +38,7 @@ export function UPIPaymentModal({ open, onClose, totalAmount, orderId, onPayment
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
             <Smartphone className="h-6 w-6" />
@@ -51,22 +53,18 @@ export function UPIPaymentModal({ open, onClose, totalAmount, orderId, onPayment
 
           {upiUrl ? (
             <>
-              <p className="text-center text-muted-foreground text-sm">
-                {language === 'kn' ? 'ಅಥವಾ ನಿಮ್ಮ UPI ಅಪ್ಲಿಕೇಶನ್ ತೆರೆಯಿರಿ' : 'Or open your UPI app directly'}
-              </p>
+              <div className="rounded-lg border bg-muted/40 p-3 text-center space-y-1">
+                <p className="text-sm text-muted-foreground">UPI ID</p>
+                <p className="font-mono font-semibold break-all">{upiId}</p>
+                {bankName && <p className="text-sm text-muted-foreground">{bankName}</p>}
+              </div>
 
-              <Button asChild variant="outline" className="h-12">
+              <Button asChild className="h-12">
                 <a href={upiUrl} onClick={handleAppClick} rel="noopener">
-                  <ExternalLink className="h-5 w-5 mr-2" />
-                  {language === 'kn' ? 'UPI ಅಪ್ಲಿಕೇಶನ್ ತೆರೆಯಿರಿ' : 'Open UPI App'}
+                  <Smartphone className="h-5 w-5 mr-2" />
+                  {language === 'kn' ? 'ಪಾವತಿಸಲು ಮುಂದುವರಿಸಿ' : 'Proceed to Pay'}
                 </a>
               </Button>
-
-              <p className="text-xs text-center text-muted-foreground">
-                {language === 'kn'
-                  ? 'Google Pay, PhonePe, Paytm ಅಥವಾ ಯಾವುದೇ UPI ಅಪ್ಲಿಕೇಶನ್ ಬಳಸಿ'
-                  : 'Use Google Pay, PhonePe, Paytm or any UPI app'}
-              </p>
             </>
           ) : (
             <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30 flex items-start gap-2">
