@@ -34,8 +34,7 @@ export function PaymentSettings({ hotelId, hotelName }: PaymentSettingsProps) {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from('hotels')
+      const { data } = await (supabase.from('hotels') as any)
         .select('upi_id, upi_name, upi_bank_name, upi_scanner_url')
         .eq('id', hotelId)
         .maybeSingle();
@@ -97,8 +96,7 @@ export function PaymentSettings({ hotelId, hotelName }: PaymentSettingsProps) {
     setSaving(true);
     const nextName = upiName.trim() || hotelName;
     const nextBank = bankName.trim();
-    const { error } = await supabase
-      .from('hotels')
+    const { error } = await (supabase.from('hotels') as any)
       .update({
         upi_id: trimmedId || null,
         upi_name: nextName || null,
