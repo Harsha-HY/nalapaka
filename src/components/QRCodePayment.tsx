@@ -47,7 +47,19 @@ export function QRCodePayment({ amount, orderId, size = 200, showCard = true, ho
 
   const content = (
     <div className="flex flex-col items-center gap-3">
-      {!upiId && !loading ? (
+      {scannerUrl ? (
+        <>
+          <img
+            src={scannerUrl}
+            alt="Uploaded UPI scanner"
+            className="rounded-lg object-contain border bg-background"
+            style={{ width: size, height: size }}
+          />
+          <p className="text-sm text-muted-foreground text-center">
+            {language === 'kn' ? `₹${amount} ಪಾವತಿಸಿ` : `Pay ₹${amount}${upiId ? ` to ${upiId}` : ''}`}
+          </p>
+        </>
+      ) : !upiId && !loading ? (
         <div className="w-full p-4 rounded-lg bg-destructive/10 border border-destructive/30 flex flex-col items-center text-center gap-2">
           <AlertCircle className="h-6 w-6 text-destructive" />
           <p className="text-sm text-destructive font-medium">
@@ -61,18 +73,6 @@ export function QRCodePayment({ amount, orderId, size = 200, showCard = true, ho
               : 'Manager: add UPI ID in Dashboard → Payment Settings'}
           </p>
         </div>
-      ) : scannerUrl ? (
-        <>
-          <img
-            src={scannerUrl}
-            alt="Uploaded UPI scanner"
-            className="rounded-lg object-contain border bg-background"
-            style={{ width: size, height: size }}
-          />
-          <p className="text-sm text-muted-foreground text-center">
-            {language === 'kn' ? `₹${amount} ಪಾವತಿಸಿ` : `Pay ₹${amount} to ${upiId}`}
-          </p>
-        </>
       ) : error ? (
         <div className="w-full h-[200px] flex items-center justify-center bg-muted rounded-lg">
           <p className="text-sm text-muted-foreground">QR code unavailable</p>
