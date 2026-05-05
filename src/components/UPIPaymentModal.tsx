@@ -77,13 +77,6 @@ export function UPIPaymentModal({ open, onClose, totalAmount, orderId, onPayment
             </div>
           )}
 
-          <div className="p-4 bg-warning/10 rounded-lg">
-            <p className="text-sm text-center text-warning">
-              {language === 'kn'
-                ? 'ಪಾವತಿ ಮಾಡಿದ ನಂತರ, ಮ್ಯಾನೇಜರ್ ದೃಢೀಕರಿಸುತ್ತಾರೆ'
-                : 'After payment, the manager will confirm'}
-            </p>
-          </div>
         </div>
       </DialogContent>
     </Dialog>
