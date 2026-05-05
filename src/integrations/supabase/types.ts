@@ -108,8 +108,10 @@ export type Database = {
           slug: string
           tagline: string | null
           updated_at: string
+          upi_bank_name: string | null
           upi_id: string | null
           upi_name: string | null
+          upi_scanner_url: string | null
         }
         Insert: {
           address?: string | null
@@ -122,8 +124,10 @@ export type Database = {
           slug: string
           tagline?: string | null
           updated_at?: string
+          upi_bank_name?: string | null
           upi_id?: string | null
           upi_name?: string | null
+          upi_scanner_url?: string | null
         }
         Update: {
           address?: string | null
@@ -136,8 +140,10 @@ export type Database = {
           slug?: string
           tagline?: string | null
           updated_at?: string
+          upi_bank_name?: string | null
           upi_id?: string | null
           upi_name?: string | null
+          upi_scanner_url?: string | null
         }
         Relationships: []
       }

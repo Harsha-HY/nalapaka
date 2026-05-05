@@ -24,8 +24,9 @@ export function QRCodePayment({ amount, orderId, size = 200, showCard = true, ho
   const [error, setError] = useState(false);
 
   const upiId = upi?.upi_id?.trim() || null;
-  const payeeName = upi?.upi_name?.trim() || 'Merchant';
+  const payeeName = upi?.upi_name?.trim() || upi?.upi_bank_name?.trim() || 'Merchant';
   const upiUri = upiId ? buildUpiUri(upiId, payeeName, amount, orderId) : null;
+  const scannerUrl = upi?.upi_scanner_url?.trim() || null;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -46,7 +47,19 @@ export function QRCodePayment({ amount, orderId, size = 200, showCard = true, ho
 
   const content = (
     <div className="flex flex-col items-center gap-3">
-      {!upiId && !loading ? (
+      {scannerUrl ? (
+        <>
+          <img
+            src={scannerUrl}
+            alt="Uploaded UPI scanner"
+            className="rounded-lg object-contain border bg-background"
+            style={{ width: size, height: size }}
+          />
+          <p className="text-sm text-muted-foreground text-center">
+            {language === 'kn' ? `₹${amount} ಪಾವತಿಸಿ` : `Pay ₹${amount}${upiId ? ` to ${upiId}` : ''}`}
+          </p>
+        </>
+      ) : !upiId && !loading ? (
         <div className="w-full p-4 rounded-lg bg-destructive/10 border border-destructive/30 flex flex-col items-center text-center gap-2">
           <AlertCircle className="h-6 w-6 text-destructive" />
           <p className="text-sm text-destructive font-medium">
