@@ -29,8 +29,7 @@ export function useHotelUpi(hotelId?: string | null) {
         return;
       }
       setLoading(true);
-      const { data: row } = await supabase
-        .from('hotels')
+      const { data: row } = await (supabase.from('hotels') as any)
         .select('upi_id, upi_name, upi_bank_name, upi_scanner_url')
         .eq('id', hotelId)
         .maybeSingle();
