@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 export interface HotelUpi {
   upi_id: string | null;
   upi_name: string | null;
+  upi_bank_name: string | null;
+  upi_scanner_url: string | null;
 }
 
 const cache = new Map<string, HotelUpi>();
@@ -29,12 +31,14 @@ export function useHotelUpi(hotelId?: string | null) {
       setLoading(true);
       const { data: row } = await supabase
         .from('hotels')
-        .select('upi_id, upi_name')
+        .select('upi_id, upi_name, upi_bank_name, upi_scanner_url')
         .eq('id', hotelId)
         .maybeSingle();
       const value: HotelUpi = {
         upi_id: (row as any)?.upi_id ?? null,
         upi_name: (row as any)?.upi_name ?? null,
+        upi_bank_name: (row as any)?.upi_bank_name ?? null,
+        upi_scanner_url: (row as any)?.upi_scanner_url ?? null,
       };
       cache.set(hotelId, value);
       if (!cancelled) {
@@ -55,5 +59,7 @@ export function useHotelUpi(hotelId?: string | null) {
 }
 
 export function buildUpiUri(upiId: string, payeeName: string, amount: number, orderId: string) {
-  return `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName || 'Merchant')}&am=${amount}&cu=INR&tn=${encodeURIComponent('Order-' + orderId.slice(0, 8))}`;
+  const formattedAmount = Number(amount || 0).toFixed(2);
+  const shortOrderId = orderId.slice(0, 8);
+  return `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName || 'Merchant')}&am=${formattedAmount}&cu=INR&tn=${encodeURIComponent('Order-' + shortOrderId)}&tr=${encodeURIComponent(shortOrderId)}`;
 }
