@@ -133,14 +133,15 @@ export default function GuestEntry() {
     if (!activeOrder) return;
     setWorking(true);
     try {
-      // Mark the previous order as completed so a fresh one can begin.
-      // (Customer is choosing to abandon adding to it.)
+      // Move the previous order out of the "active" slot but KEEP its status
+      // (Pending / Confirmed / etc.) so the customer can still see it in their
+      // Order History with the correct badge.
       const { error } = await supabase
         .from('orders')
         .update({ order_stage: 'completed' } as any)
         .eq('id', activeOrder.id);
       if (error) throw error;
-      toast.success('Starting a new order');
+      toast.success('Previous order saved to history. Starting a new order.');
       navigate('/menu', { replace: true });
     } catch (err) {
       console.error(err);
