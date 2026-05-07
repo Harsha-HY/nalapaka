@@ -106,13 +106,9 @@ export default function GuestEntry() {
           return;
         }
 
-        // If still pending (not yet accepted/confirmed) — silently resume to status page
-        if (active.order_status === 'Pending') {
-          navigate('/order-status', { replace: true });
-          return;
-        }
-
-        // Otherwise — there's a confirmed/in-progress order. Ask.
+        // Always ask the customer: Stay on the existing order, or start a new one.
+        // (Previously Pending orders were silently resumed, which made customers
+        //  think the prompt wasn't working.)
         setActiveOrder(active);
       } catch (err) {
         console.error('Guest entry error:', err);
