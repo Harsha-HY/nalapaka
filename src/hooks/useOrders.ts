@@ -64,7 +64,11 @@ export function useOrders() {
         const activeOrder = data.find(
           (o) => o.order_stage !== 'completed' && !o.payment_confirmed
         );
-        setCurrentOrder((activeOrder as Order) || null);
+        // Fallback: if there's no live active order, keep the most recent order
+        // visible briefly so the post-payment review modal can trigger.
+        setCurrentOrder((activeOrder as Order) || (data[0] as Order) || null);
+      } else if (!isManager) {
+        setCurrentOrder(null);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
