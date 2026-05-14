@@ -20,7 +20,7 @@ const ALL_SEATS = ['A', 'B', 'C', 'D'];
 export default function CheckoutPage() {
   const { items, totalAmount, clearCart, updateQuantity, removeItem } = useCart();
   const { t, language } = useLanguage();
-  const { saveTableNumber } = useTableNumber();
+  const { tableNumber: prefilledTable, isTableSet, saveTableNumber } = useTableNumber();
   const { currentOrder, createOrder, addItemsToOrder } = useOrders();
   const { lockSeats, getLockedSeatsForTable, getAvailableSeats } = useLockedSeats();
   const { profile, upsertProfile } = useProfile();
@@ -29,8 +29,11 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedOrderType, setSelectedOrderType] = useState<'dine-in' | 'parcel' | null>(null);
-  const [tableNumber, setTableNumber] = useState('');
+  // If the table was set via QR scan, lock the order type to dine-in.
+  const [selectedOrderType, setSelectedOrderType] = useState<'dine-in' | 'parcel' | null>(
+    isTableSet ? 'dine-in' : null
+  );
+  const [tableNumber, setTableNumber] = useState(isTableSet ? prefilledTable : '');
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [seatError, setSeatError] = useState<string | null>(null);
   const [autoFilled, setAutoFilled] = useState(false);
