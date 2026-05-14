@@ -32,7 +32,8 @@ type ActiveOrder = {
 
 export default function GuestEntry() {
   const navigate = useNavigate();
-  const { hotelSlug } = useParams<{ hotelSlug?: string }>();
+  const { hotelSlug, tableNumber: tableNumberParam } = useParams<{ hotelSlug?: string; tableNumber?: string }>();
+  const { saveTableNumber, clearTableNumber } = useTableNumber();
   const [status, setStatus] = useState('Loading menu...');
   const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
   const [resolvedHotel, setResolvedHotel] = useState<{ id: string; name: string; slug: string } | null>(null);
@@ -45,6 +46,15 @@ export default function GuestEntry() {
       try {
         getDeviceId();
         await ensureAnonSession();
+
+        // If the QR encodes a table number, persist it so the customer
+        // never has to re-enter it. Clear any stale value otherwise.
+        if (tableNumberParam && tableNumberParam.trim()) {
+          saveTableNumber(tableNumberParam.trim());
+        } else {
+          clearTableNumber();
+        }
+
 
         let hotel: { id: string; name: string; slug: string } | null = null;
 
