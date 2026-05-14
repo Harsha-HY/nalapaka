@@ -95,6 +95,7 @@ const AppRoutes = () => (
     {/* Customer flow — fully public, no auth required */}
     <Route path="/guest" element={<GuestEntry />} />
     <Route path="/guest/:hotelSlug" element={<GuestEntry />} />
+    <Route path="/guest/:hotelSlug/:tableNumber" element={<GuestEntry />} />
     <Route path="/menu" element={<MenuPage />} />
     <Route path="/cart" element={<CartPage />} />
     <Route path="/checkout" element={<CheckoutPage />} />

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { setGuestHotel } from '@/hooks/useHotelContext';
 import { getDeviceId } from '@/hooks/useDevice';
 import { ensureAnonSession } from '@/hooks/useAnonAuth';
+import { useTableNumber } from '@/hooks/useTableNumber';
 import { Loader2, UtensilsCrossed, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +32,8 @@ type ActiveOrder = {
 
 export default function GuestEntry() {
   const navigate = useNavigate();
-  const { hotelSlug } = useParams<{ hotelSlug?: string }>();
+  const { hotelSlug, tableNumber: tableNumberParam } = useParams<{ hotelSlug?: string; tableNumber?: string }>();
+  const { saveTableNumber, clearTableNumber } = useTableNumber();
   const [status, setStatus] = useState('Loading menu...');
   const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
   const [resolvedHotel, setResolvedHotel] = useState<{ id: string; name: string; slug: string } | null>(null);
@@ -44,6 +46,15 @@ export default function GuestEntry() {
       try {
         getDeviceId();
         await ensureAnonSession();
+
+        // If the QR encodes a table number, persist it so the customer
+        // never has to re-enter it. Clear any stale value otherwise.
+        if (tableNumberParam && tableNumberParam.trim()) {
+          saveTableNumber(tableNumberParam.trim());
+        } else {
+          clearTableNumber();
+        }
+
 
         let hotel: { id: string; name: string; slug: string } | null = null;
 
@@ -119,7 +130,7 @@ export default function GuestEntry() {
     return () => {
       cancelled = true;
     };
-  }, [hotelSlug, navigate]);
+  }, [hotelSlug, tableNumberParam, navigate]);
 
   const handleStay = () => {
     navigate('/order-status', { replace: true });

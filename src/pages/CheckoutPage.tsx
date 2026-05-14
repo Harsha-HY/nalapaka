@@ -20,7 +20,7 @@ const ALL_SEATS = ['A', 'B', 'C', 'D'];
 export default function CheckoutPage() {
   const { items, totalAmount, clearCart, updateQuantity, removeItem } = useCart();
   const { t, language } = useLanguage();
-  const { saveTableNumber } = useTableNumber();
+  const { tableNumber: prefilledTable, isTableSet, saveTableNumber } = useTableNumber();
   const { currentOrder, createOrder, addItemsToOrder } = useOrders();
   const { lockSeats, getLockedSeatsForTable, getAvailableSeats } = useLockedSeats();
   const { profile, upsertProfile } = useProfile();
@@ -29,8 +29,11 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedOrderType, setSelectedOrderType] = useState<'dine-in' | 'parcel' | null>(null);
-  const [tableNumber, setTableNumber] = useState('');
+  // If the table was set via QR scan, lock the order type to dine-in.
+  const [selectedOrderType, setSelectedOrderType] = useState<'dine-in' | 'parcel' | null>(
+    isTableSet ? 'dine-in' : null
+  );
+  const [tableNumber, setTableNumber] = useState(isTableSet ? prefilledTable : '');
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [seatError, setSeatError] = useState<string | null>(null);
   const [autoFilled, setAutoFilled] = useState(false);
@@ -289,49 +292,79 @@ export default function CheckoutPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="table-number">{language === 'kn' ? 'ಟೇಬಲ್ ಸಂಖ್ಯೆ' : 'Table Number'}</Label>
-                  <Input
-                    id="table-number"
-                    value={tableNumber}
-                    onChange={(e) => {
-                      setTableNumber(e.target.value);
-                      setSelectedSeats([]);
-                      setSeatError(null);
-                    }}
-                    placeholder={language === 'kn' ? 'ಟೇಬಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ' : 'Enter table number'}
-                    className="h-12 text-center text-xl"
-                  />
+                  {isTableSet ? (
+                    <div className="h-14 flex items-center justify-center rounded-md border-2 border-primary/40 bg-primary/5">
+                      <span className="text-3xl font-bold text-primary">
+                        {language === 'kn' ? 'ಟೇಬಲ್' : 'Table'} {tableNumber}
+                      </span>
+                    </div>
+                  ) : (
+                    <Input
+                      id="table-number"
+                      value={tableNumber}
+                      onChange={(e) => {
+                        setTableNumber(e.target.value);
+                        setSelectedSeats([]);
+                        setSeatError(null);
+                      }}
+                      placeholder={language === 'kn' ? 'ಟೇಬಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ' : 'Enter table number'}
+                      className="h-12 text-center text-xl"
+                    />
+                  )}
+                  {isTableSet && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      {language === 'kn'
+                        ? 'ಈ ಟೇಬಲ್ ನಿಮ್ಮ QR ಕೋಡ್‌ನಿಂದ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ'
+                        : 'Auto-detected from your table QR code'}
+                    </p>
+                  )}
                 </div>
 
                 {tableNumber.trim() && (
-                  <div className="space-y-2">
-                    <Label>{language === 'kn' ? 'ಆಸನಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ' : 'Select Seats'}</Label>
-                    <div className="grid grid-cols-4 gap-3">
+                  <div className="space-y-3">
+                    <Label className="text-base">
+                      {language === 'kn' ? 'ನಿಮ್ಮ ಆಸನವನ್ನು ಆಯ್ಕೆಮಾಡಿ' : 'Select your seat(s)'}
+                    </Label>
+                    <div className="grid grid-cols-2 gap-3">
                       {ALL_SEATS.map((seat) => {
                         const isLocked = lockedSeats.includes(seat);
                         const isSelected = selectedSeats.includes(seat);
                         return (
-                          <Button
+                          <button
                             key={seat}
                             type="button"
-                            variant={isSelected ? 'default' : 'outline'}
                             disabled={isLocked}
                             onClick={() => handleSeatToggle(seat)}
                             className={cn(
-                              'h-14 text-lg font-bold flex flex-col',
-                              isLocked && 'opacity-50 bg-muted cursor-not-allowed',
-                              isSelected && 'ring-2 ring-primary ring-offset-2'
+                              'aspect-square rounded-2xl border-2 flex flex-col items-center justify-center transition-all',
+                              'text-5xl font-bold',
+                              isLocked && 'opacity-60 bg-muted border-muted text-muted-foreground cursor-not-allowed',
+                              !isLocked && !isSelected && 'border-border bg-card hover:border-primary/60 hover:bg-primary/5',
+                              isSelected && 'border-primary bg-primary text-primary-foreground shadow-lg scale-[1.02]'
                             )}
                           >
                             <span className={isLocked ? 'line-through' : ''}>{seat}</span>
-                            {isLocked && (
-                              <span className="text-[10px] font-normal">
-                                {language === 'kn' ? 'ಆಕ್ರಮಿತ' : 'Taken'}
-                              </span>
-                            )}
-                          </Button>
+                            <span className={cn(
+                              'text-xs font-medium mt-1',
+                              isLocked ? 'text-destructive' : isSelected ? 'text-primary-foreground/90' : 'text-emerald-600'
+                            )}>
+                              {isLocked
+                                ? (language === 'kn' ? 'ಭರ್ತಿ' : 'Filled')
+                                : (language === 'kn' ? 'ಲಭ್ಯ' : 'Available')}
+                            </span>
+                          </button>
                         );
                       })}
                     </div>
+                    {lockedSeats.length === ALL_SEATS.length && (
+                      <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-center">
+                        <p className="text-sm font-medium text-destructive">
+                          {language === 'kn'
+                            ? 'ಎಲ್ಲಾ ಆಸನಗಳು ಭರ್ತಿಯಾಗಿವೆ. ದಯವಿಟ್ಟು ಸಿಬ್ಬಂದಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.'
+                            : 'All seats are filled. Please contact staff.'}
+                        </p>
+                      </div>
+                    )}
                     {seatError && (
                       <div className="p-2 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
