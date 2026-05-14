@@ -10,33 +10,32 @@ interface HotelQRCodeProps {
   hotelSlug: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  tableNumber?: string;
 }
 
-// The PUBLISHED customer URL. The QR must NEVER point at the Lovable editor
-// preview origin (id-preview--*.lovable.app) — scanning that prompts a Lovable
-// login. We always pin the QR to the public published origin.
 const PUBLISHED_ORIGIN = 'https://nalapaka.lovable.app';
 
 function getPublicOrigin(): string {
   if (typeof window === 'undefined') return PUBLISHED_ORIGIN;
   const host = window.location.hostname;
-  // If we're inside the Lovable editor preview, force the published origin.
   if (host.includes('id-preview--') || host.includes('lovableproject.com') || host === 'localhost' || host.startsWith('127.')) {
     return PUBLISHED_ORIGIN;
   }
   return window.location.origin;
 }
 
-export function HotelQRCode({ hotelName, hotelSlug, open, onOpenChange }: HotelQRCodeProps) {
+export function HotelQRCode({ hotelName, hotelSlug, open, onOpenChange, tableNumber }: HotelQRCodeProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const guestUrl = `${getPublicOrigin()}/guest/${hotelSlug}`;
+  const tablePart = tableNumber ? `/${encodeURIComponent(tableNumber)}` : '';
+  const guestUrl = `${getPublicOrigin()}/guest/${hotelSlug}${tablePart}`;
 
   const handleDownload = () => {
     const canvas = canvasRef.current?.querySelector('canvas');
     if (!canvas) return;
     const url = canvas.toDataURL('image/png');
     const link = document.createElement('a');
-    link.download = `${hotelSlug}-menu-qr.png`;
+    const suffix = tableNumber ? `-table-${tableNumber}` : '';
+    link.download = `${hotelSlug}${suffix}-qr.png`;
     link.href = url;
     link.click();
     toast.success('QR code downloaded');
@@ -44,8 +43,12 @@ export function HotelQRCode({ hotelName, hotelSlug, open, onOpenChange }: HotelQ
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(guestUrl);
-    toast.success('Menu link copied');
+    toast.success('Link copied');
   };
+
+  const title = tableNumber
+    ? `${hotelName} — Table ${tableNumber}`
+    : `${hotelName} — Menu QR`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -53,20 +56,19 @@ export function HotelQRCode({ hotelName, hotelSlug, open, onOpenChange }: HotelQ
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <QrCode className="h-5 w-5 text-primary" />
-            {hotelName} — Menu QR
+            {title}
           </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 py-4">
           <div ref={canvasRef} className="p-4 bg-white rounded-lg border-2 border-primary/20">
-            <QRCodeCanvas
-              value={guestUrl}
-              size={240}
-              level="H"
-              includeMargin
-            />
+            <QRCodeCanvas value={guestUrl} size={240} level="H" includeMargin />
           </div>
           <div className="text-center space-y-1">
-            <p className="text-sm font-medium">Scan to view {hotelName} menu</p>
+            <p className="text-sm font-medium">
+              {tableNumber
+                ? `Place this on Table ${tableNumber}`
+                : `Scan to view ${hotelName} menu`}
+            </p>
             <p className="text-xs text-muted-foreground break-all">{guestUrl}</p>
           </div>
           <div className="flex gap-2 w-full">
