@@ -130,7 +130,7 @@ export default function GuestEntry() {
     return () => {
       cancelled = true;
     };
-  }, [hotelSlug, navigate]);
+  }, [hotelSlug, tableNumberParam, navigate]);
 
   const handleStay = () => {
     navigate('/order-status', { replace: true });
