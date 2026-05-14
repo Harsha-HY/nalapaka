@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { setGuestHotel } from '@/hooks/useHotelContext';
 import { getDeviceId } from '@/hooks/useDevice';
 import { ensureAnonSession } from '@/hooks/useAnonAuth';
+import { useTableNumber } from '@/hooks/useTableNumber';
 import { Loader2, UtensilsCrossed, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
