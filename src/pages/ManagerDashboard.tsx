@@ -30,6 +30,7 @@ import { useOrders, Order } from '@/hooks/useOrders';
 import { useMenuItems } from '@/hooks/useMenuItems';
 import { useLockedSeats } from '@/hooks/useLockedSeats';
 import { HotelQRCode } from '@/components/HotelQRCode';
+import { TableQRSection } from '@/components/TableQRSection';
 import { AddMenuItemDialog } from '@/components/AddMenuItemDialog';
 import { Trash2, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,7 @@ import { MenuItemImageUploader } from '@/components/MenuItemImageUploader';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-type DashboardSection = 'orders' | 'menu' | 'specials' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics' | 'payments';
+type DashboardSection = 'orders' | 'menu' | 'specials' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics' | 'payments' | 'tableqr';
 
 export default function ManagerDashboard() {
   const { language } = useLanguage();
@@ -354,6 +355,15 @@ export default function ManagerDashboard() {
               <Smartphone className="h-4 w-4 mr-1" />
               Payments
             </Button>
+            <Button 
+              variant={activeSection === 'tableqr' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('tableqr')}
+              className={activeSection === 'tableqr' ? 'shadow-sm' : ''}
+            >
+              <QrCode className="h-4 w-4 mr-1" />
+              Table QR
+            </Button>
           </div>
 
           {/* Reset All Tables Button */}
@@ -544,6 +554,13 @@ export default function ManagerDashboard() {
           {/* Payment Settings Section */}
           {activeSection === 'payments' && hotel?.id && (
             <PaymentSettings hotelId={hotel.id} hotelName={hotel.name} />
+          )}
+
+          {/* Table QR Section */}
+          {activeSection === 'tableqr' && hotel?.slug && (
+            <div>
+              <TableQRSection hotelName={hotel.name} hotelSlug={hotel.slug} />
+            </div>
           )}
         </main>
       </div>
