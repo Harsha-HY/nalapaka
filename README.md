@@ -1,7 +1,7 @@
 Smart Restaurant Ordering & Management System
 
 Live Demo
-https://nalapaka.lovable.app
+https://nalapaka.vercel.app
 
 Overview
 
