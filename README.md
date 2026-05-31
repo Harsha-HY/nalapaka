@@ -406,7 +406,7 @@ Features & Integrations
 
 Deployment & Hosting
 
-- Lovable
+- Vercel
 - Web-based Cloud Deployment
 
 Dashboards Included

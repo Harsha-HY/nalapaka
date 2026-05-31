@@ -7,11 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Download, Copy, QrCode, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 
-const PUBLISHED_ORIGIN = 'https://nalapaka.lovable.app';
+const PUBLISHED_ORIGIN = 'https://nalapaka.vercel.app';
 function getPublicOrigin(): string {
   if (typeof window === 'undefined') return PUBLISHED_ORIGIN;
   const host = window.location.hostname;
-  if (host.includes('id-preview--') || host.includes('lovableproject.com') || host === 'localhost' || host.startsWith('127.')) {
+  if (host.includes('id-preview--') || host === 'localhost' || host.startsWith('127.')) {
     return PUBLISHED_ORIGIN;
   }
   return window.location.origin;
