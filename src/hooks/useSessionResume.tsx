@@ -13,13 +13,17 @@ import { Loader2 } from 'lucide-react';
  * the redirect should NOT happen.
  */
 export function useSessionResume() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, role, isLoading: authLoading } = useAuth();
   const { currentOrder, isLoading: ordersLoading } = useOrders();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     if (authLoading || ordersLoading) return;
+    
+    // Staff roles do not need session resume
+    if (role && role !== 'customer') return;
+
     // Guests are anonymous now — resume based on currentOrder regardless of `user`
     if (!currentOrder) return;
 

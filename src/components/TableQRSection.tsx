@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Download, Copy, QrCode, Printer } from 'lucide-react';
+import { Download, Copy, QrCode, Printer, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const PUBLISHED_ORIGIN = 'https://nalapaka.vercel.app';
@@ -25,6 +25,10 @@ interface TableQRSectionProps {
 export function TableQRSection({ hotelName, hotelSlug }: TableQRSectionProps) {
   const [tableInput, setTableInput] = useState('');
   const [generatedTable, setGeneratedTable] = useState<string | null>(null);
+  const [tables, setTables] = useState<string[]>(() => {
+    const saved = localStorage.getItem(`nalapaka_tables_${hotelSlug}`);
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const generate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +37,31 @@ export function TableQRSection({ hotelName, hotelSlug }: TableQRSectionProps) {
       toast.error('Enter a table number');
       return;
     }
+
+    if (!tables.includes(t)) {
+      const updated = [...tables, t].sort((a, b) => {
+        const numA = parseInt(a, 10);
+        const numB = parseInt(b, 10);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return a.localeCompare(b);
+      });
+      setTables(updated);
+      localStorage.setItem(`nalapaka_tables_${hotelSlug}`, JSON.stringify(updated));
+    }
+
     setGeneratedTable(t);
+    setTableInput('');
+    toast.success(`Table ${t} generated and saved`);
+  };
+
+  const handleDeleteTable = (t: string) => {
+    const updated = tables.filter(item => item !== t);
+    setTables(updated);
+    localStorage.setItem(`nalapaka_tables_${hotelSlug}`, JSON.stringify(updated));
+    if (generatedTable === t) {
+      setGeneratedTable(null);
+    }
+    toast.success(`Table ${t} removed`);
   };
 
   const guestUrl = generatedTable
@@ -93,7 +121,7 @@ export function TableQRSection({ hotelName, hotelSlug }: TableQRSectionProps) {
           Table QR Codes
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Generate a separate QR for each table. Customers scanning it will be auto-assigned to that table — no manual table entry needed.
+          Generate and store a separate QR for each table. Customers scanning it will be auto-assigned to that table.
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -115,7 +143,7 @@ export function TableQRSection({ hotelName, hotelSlug }: TableQRSectionProps) {
         </form>
 
         {generatedTable && (
-          <div className="flex flex-col items-center gap-4 pt-2 border-t">
+          <div className="flex flex-col items-center gap-4 pt-4 border-t">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">{hotelName}</p>
               <p className="text-2xl font-bold">Table {generatedTable}</p>
@@ -126,7 +154,7 @@ export function TableQRSection({ hotelName, hotelSlug }: TableQRSectionProps) {
             <p className="text-xs text-muted-foreground break-all text-center max-w-xs">{guestUrl}</p>
             <div className="flex gap-2 w-full max-w-md">
               <Button onClick={handleCopy} variant="outline" className="flex-1">
-                <Copy className="h-4 w-4 mr-1" /> Copy
+                <Copy className="h-4 w-4 mr-1" /> Copy Link
               </Button>
               <Button onClick={handlePrint} variant="outline" className="flex-1">
                 <Printer className="h-4 w-4 mr-1" /> Print
@@ -134,6 +162,37 @@ export function TableQRSection({ hotelName, hotelSlug }: TableQRSectionProps) {
               <Button onClick={handleDownload} className="flex-1">
                 <Download className="h-4 w-4 mr-1" /> Download
               </Button>
+            </div>
+          </div>
+        )}
+
+        {tables.length > 0 && (
+          <div className="pt-6 border-t">
+            <h3 className="text-sm font-semibold mb-3">Stored Tables ({tables.length})</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {tables.map((t) => (
+                <div 
+                  key={t}
+                  className={`p-3 rounded-lg border flex items-center justify-between gap-2 transition-all ${
+                    generatedTable === t ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card'
+                  }`}
+                >
+                  <button
+                    onClick={() => setGeneratedTable(t)}
+                    className="flex-1 text-left font-medium text-sm"
+                  >
+                    Table {t}
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                    onClick={() => handleDeleteTable(t)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
         )}

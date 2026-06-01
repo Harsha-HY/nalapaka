@@ -61,6 +61,14 @@ export default function CheckoutPage() {
     }
   }, [hasActiveOrder, currentOrder]);
 
+  // Synchronize prefilledTable and isTableSet when they are loaded from sessionStorage
+  useEffect(() => {
+    if (isTableSet) {
+      setTableNumber(prefilledTable);
+      setSelectedOrderType('dine-in');
+    }
+  }, [isTableSet, prefilledTable]);
+
 
   if (items.length === 0) {
     navigate('/menu');

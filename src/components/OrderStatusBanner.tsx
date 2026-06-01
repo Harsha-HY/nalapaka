@@ -1,11 +1,14 @@
 import { Clock, CheckCircle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useOrders } from '@/hooks/useOrders';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function OrderStatusBanner() {
   const { currentOrder } = useOrders();
+  const { role } = useAuth();
   const { t } = useLanguage();
 
+  if (role && role !== 'customer') return null;
   if (!currentOrder) return null;
 
   const isConfirmed = currentOrder.order_status === 'Confirmed';
