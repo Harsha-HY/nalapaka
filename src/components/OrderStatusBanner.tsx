@@ -10,6 +10,7 @@ export function OrderStatusBanner() {
 
   if (role && role !== 'customer') return null;
   if (!currentOrder) return null;
+  if (currentOrder.payment_confirmed || currentOrder.order_stage === 'completed') return null;
 
   const isConfirmed = currentOrder.order_status === 'Confirmed';
 
