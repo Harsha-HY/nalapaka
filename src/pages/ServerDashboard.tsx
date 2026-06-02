@@ -538,10 +538,16 @@ function ServerOrderCard({
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             {language === 'kn' ? 'ಆರ್ಡರ್ ಮಾಡಿದ ಐಟಂಗಳು' : 'Ordered Items'}
           </p>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {orderedItems.map((item, index) => (
-              <div key={index} className="flex justify-between text-sm font-semibold">
-                <span>{language === 'kn' ? item.nameKn : item.name} × {item.quantity}</span>
+              <div key={index} className="flex justify-between items-center text-sm font-semibold">
+                <div className="flex flex-col">
+                  <span>{language === 'kn' ? item.nameKn : item.name} × {item.quantity}</span>
+                  <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-0.5 mt-0.5">
+                    <Clock className="h-3 w-3 text-muted-foreground/75" />
+                    <RequestTimeAgo createdAt={order.created_at} />
+                  </span>
+                </div>
                 <span>₹{item.price * item.quantity}</span>
               </div>
             ))}
@@ -549,13 +555,19 @@ function ServerOrderCard({
           
           {extraItems.length > 0 && (
             <div className="pt-2 border-t border-border mt-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-destructive">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-destructive font-bold">
                 {language === 'kn' ? 'ಹೆಚ್ಚುವರಿ ಐಟಂಗಳು' : 'Extra Items'}
               </p>
-              <div className="space-y-1 mt-1">
+              <div className="space-y-1.5 mt-1">
                 {extraItems.map((item: any, index: number) => (
-                  <div key={index} className="flex justify-between text-xs text-destructive font-semibold">
-                    <span>{language === 'kn' ? item.nameKn || item.name : item.name} × {item.quantity}</span>
+                  <div key={index} className="flex justify-between items-center text-xs text-destructive font-semibold">
+                    <div className="flex flex-col">
+                      <span>{language === 'kn' ? item.nameKn || item.name : item.name} × {item.quantity}</span>
+                      <span className="text-[9px] text-destructive/80 font-medium flex items-center gap-0.5 mt-0.5 animate-pulse">
+                        <Clock className="h-2.5 w-2.5 text-destructive/75" />
+                        <RequestTimeAgo createdAt={item.addedAt || order.created_at} />
+                      </span>
+                    </div>
                     {item.price && <span>₹{item.price * item.quantity}</span>}
                   </div>
                 ))}
