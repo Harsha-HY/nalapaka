@@ -1,8 +1,55 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 
+// Rate limiting store (in-memory for simplicity, persists during function lifetime)
+const requestCounts = new Map<string, number[]>()
+const RATE_LIMIT_WINDOW = 60000 // 1 minute
+const RATE_LIMIT_MAX_ATTEMPTS = 5
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Origin': 'https://nalapaka.vercel.app',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, content-type',
+}
+
+// Helper function to validate password strength
+function isPasswordStrong(password: string): { valid: boolean; message?: string } {
+  if (password.length < 12) {
+    return { valid: false, message: 'Password must be at least 12 characters' }
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, message: 'Password must contain at least one uppercase letter' }
+  }
+  if (!/[a-z]/.test(password)) {
+    return { valid: false, message: 'Password must contain at least one lowercase letter' }
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, message: 'Password must contain at least one number' }
+  }
+  return { valid: true }
+}
+
+// Helper function for rate limiting
+function checkRateLimit(identifier: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now()
+  const key = `reset-pwd-${identifier}`
+  
+  if (!requestCounts.has(key)) {
+    requestCounts.set(key, [])
+  }
+  
+  const attempts = requestCounts.get(key)!
+  // Remove old attempts outside the window
+  const recentAttempts = attempts.filter(t => now - t < RATE_LIMIT_WINDOW)
+  
+  if (recentAttempts.length >= RATE_LIMIT_MAX_ATTEMPTS) {
+    const oldestAttempt = Math.min(...recentAttempts)
+    const retryAfter = Math.ceil((oldestAttempt + RATE_LIMIT_WINDOW - now) / 1000)
+    return { allowed: false, retryAfter }
+  }
+  
+  recentAttempts.push(now)
+  requestCounts.set(key, recentAttempts)
+  return { allowed: true }
 }
 
 Deno.serve(async (req) => {
@@ -45,6 +92,25 @@ Deno.serve(async (req) => {
 
     const callerUserId = callerUser.id
 
+    // Rate limit check per user
+    const rateLimitCheck = checkRateLimit(callerUserId)
+    if (!rateLimitCheck.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Too many password reset attempts. Please try again later.',
+          retryAfter: rateLimitCheck.retryAfter
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': String(rateLimitCheck.retryAfter)
+          } 
+        }
+      )
+    }
+
     // Check if caller is a manager
     const { data: callerRole } = await supabaseAdmin
       .from('user_roles')
@@ -69,10 +135,32 @@ Deno.serve(async (req) => {
       )
     }
 
-    if (newPassword.length < 6) {
+    // Validate password strength
+    const passwordValidation = isPasswordStrong(newPassword)
+    if (!passwordValidation.valid) {
       return new Response(
-        JSON.stringify({ error: 'Password must be at least 6 characters' }),
+        JSON.stringify({ error: passwordValidation.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Verify that the server belongs to the same hotel as the manager
+    const { data: managerHotel } = await supabaseAdmin
+      .from('hotel_members')
+      .select('hotel_id')
+      .eq('user_id', callerUserId)
+      .maybeSingle()
+
+    const { data: serverHotel } = await supabaseAdmin
+      .from('hotel_members')
+      .select('hotel_id')
+      .eq('user_id', serverUserId)
+      .maybeSingle()
+
+    if (!managerHotel || !serverHotel || managerHotel.hotel_id !== serverHotel.hotel_id) {
+      return new Response(
+        JSON.stringify({ error: 'Cannot reset password for users outside your hotel' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -98,7 +186,7 @@ Deno.serve(async (req) => {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error'
     console.error('Reset password error:', errorMessage)
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'An error occurred during password reset' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

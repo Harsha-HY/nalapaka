@@ -1,8 +1,37 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 
+// Rate limiting store (in-memory for simplicity)
+const requestCounts = new Map<string, number[]>()
+const RATE_LIMIT_WINDOW = 60000 // 1 minute
+const RATE_LIMIT_MAX_ATTEMPTS = 3 // More restrictive for delete operations
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Origin': 'https://nalapaka.vercel.app',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, content-type',
+}
+
+// Helper function for rate limiting
+function checkRateLimit(identifier: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now()
+  const key = `delete-hotel-${identifier}`
+  
+  if (!requestCounts.has(key)) {
+    requestCounts.set(key, [])
+  }
+  
+  const attempts = requestCounts.get(key)!
+  const recentAttempts = attempts.filter(t => now - t < RATE_LIMIT_WINDOW)
+  
+  if (recentAttempts.length >= RATE_LIMIT_MAX_ATTEMPTS) {
+    const oldestAttempt = Math.min(...recentAttempts)
+    const retryAfter = Math.ceil((oldestAttempt + RATE_LIMIT_WINDOW - now) / 1000)
+    return { allowed: false, retryAfter }
+  }
+  
+  recentAttempts.push(now)
+  requestCounts.set(key, recentAttempts)
+  return { allowed: true }
 }
 
 Deno.serve(async (req) => {
@@ -23,6 +52,25 @@ Deno.serve(async (req) => {
     const { data: { user: caller }, error: userErr } = await supabaseAdmin.auth.getUser(token)
     if (userErr || !caller) return new Response(JSON.stringify({ error: 'Invalid token' }),
       { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
+    // Rate limit check per user (more restrictive for delete operations)
+    const rateLimitCheck = checkRateLimit(caller.id)
+    if (!rateLimitCheck.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Too many delete requests. Please try again later.',
+          retryAfter: rateLimitCheck.retryAfter
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': String(rateLimitCheck.retryAfter)
+          } 
+        }
+      )
+    }
 
     const { data: callerRole } = await supabaseAdmin
       .from('user_roles').select('role').eq('user_id', caller.id).maybeSingle()
@@ -60,7 +108,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     console.error('delete-hotel error:', msg)
-    return new Response(JSON.stringify({ error: msg }),
+    return new Response(JSON.stringify({ error: 'An error occurred during deletion' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 })

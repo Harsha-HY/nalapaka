@@ -1,8 +1,54 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 
+// Rate limiting store (in-memory for simplicity)
+const requestCounts = new Map<string, number[]>()
+const RATE_LIMIT_WINDOW = 60000 // 1 minute
+const RATE_LIMIT_MAX_ATTEMPTS = 3 // More restrictive for hotel creation
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Origin': 'https://nalapaka.vercel.app',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, content-type',
+}
+
+// Helper function to validate password strength
+function isPasswordStrong(password: string): { valid: boolean; message?: string } {
+  if (password.length < 12) {
+    return { valid: false, message: 'Password must be at least 12 characters' }
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, message: 'Password must contain at least one uppercase letter' }
+  }
+  if (!/[a-z]/.test(password)) {
+    return { valid: false, message: 'Password must contain at least one lowercase letter' }
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, message: 'Password must contain at least one number' }
+  }
+  return { valid: true }
+}
+
+// Helper function for rate limiting
+function checkRateLimit(identifier: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now()
+  const key = `create-hotel-${identifier}`
+  
+  if (!requestCounts.has(key)) {
+    requestCounts.set(key, [])
+  }
+  
+  const attempts = requestCounts.get(key)!
+  const recentAttempts = attempts.filter(t => now - t < RATE_LIMIT_WINDOW)
+  
+  if (recentAttempts.length >= RATE_LIMIT_MAX_ATTEMPTS) {
+    const oldestAttempt = Math.min(...recentAttempts)
+    const retryAfter = Math.ceil((oldestAttempt + RATE_LIMIT_WINDOW - now) / 1000)
+    return { allowed: false, retryAfter }
+  }
+  
+  recentAttempts.push(now)
+  requestCounts.set(key, recentAttempts)
+  return { allowed: true }
 }
 
 // Seed menu — every new hotel gets a baseline menu they can customize
@@ -52,6 +98,25 @@ Deno.serve(async (req) => {
     if (userErr || !caller) return new Response(JSON.stringify({ error: 'Invalid token' }),
       { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
+    // Rate limit check per user (more restrictive for hotel creation)
+    const rateLimitCheck = checkRateLimit(caller.id)
+    if (!rateLimitCheck.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Too many requests. Please try again later.',
+          retryAfter: rateLimitCheck.retryAfter
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': String(rateLimitCheck.retryAfter)
+          } 
+        }
+      )
+    }
+
     const { data: callerRole } = await supabaseAdmin
       .from('user_roles').select('role').eq('user_id', caller.id).maybeSingle()
     if (callerRole?.role !== 'super_admin') {
@@ -68,6 +133,15 @@ Deno.serve(async (req) => {
     if (!/^[a-z0-9-]+$/.test(hotelSlug)) {
       return new Response(JSON.stringify({ error: 'Slug can contain only lowercase letters, numbers, and hyphens' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // Validate password strength
+    const passwordValidation = isPasswordStrong(managerPassword)
+    if (!passwordValidation.valid) {
+      return new Response(
+        JSON.stringify({ error: passwordValidation.message }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     // 1) Create hotel
@@ -126,7 +200,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     console.error('create-hotel error:', msg)
-    return new Response(JSON.stringify({ error: msg }),
+    return new Response(JSON.stringify({ error: 'An error occurred during hotel creation' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 })
