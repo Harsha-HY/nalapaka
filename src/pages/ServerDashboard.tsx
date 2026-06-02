@@ -50,11 +50,17 @@ export default function ServerDashboard() {
 
   const fetchTableRequests = async () => {
     if (!currentServer || !user) return;
+    
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
     const { data } = await supabase
       .from('table_requests' as any)
       .select('*')
-      .eq('status', 'Pending')
-      .in('table_number', currentServer.assigned_tables);
+      .gte('created_at', todayStart.toISOString())
+      .in('table_number', currentServer.assigned_tables)
+      .order('created_at', { ascending: true });
+
     if (data) {
       setTableRequests(data);
     }
@@ -84,17 +90,22 @@ export default function ServerDashboard() {
     };
   }, [currentServer?.assigned_tables]);
 
-  const handleCompleteRequest = async (requestId: string) => {
+  const handleToggleRequestStatus = async (requestId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'Pending' ? 'Completed' : 'Pending';
     try {
       const { error } = await supabase
         .from('table_requests' as any)
-        .update({ status: 'Completed' })
+        .update({ status: newStatus })
         .eq('id', requestId);
       if (error) throw error;
-      toast.success(language === 'kn' ? 'ವಿನಂತಿಯನ್ನು ಪೂರ್ಣಗೊಳಿಸಲಾಗಿದೆ' : 'Request completed!');
+      toast.success(
+        newStatus === 'Completed'
+          ? (language === 'kn' ? 'ವಿನಂತಿಯನ್ನು ಪೂರೈಸಲಾಗಿದೆ' : 'Request served!')
+          : (language === 'kn' ? 'ವಿನಂತಿಯನ್ನು ಬಾಕಿ ಉಳಿಸಲಾಗಿದೆ' : 'Request set to pending')
+      );
       fetchTableRequests();
     } catch (e) {
-      toast.error('Failed to complete request');
+      toast.error('Failed to update request');
     }
   };
 
@@ -276,50 +287,6 @@ export default function ServerDashboard() {
         {/* Orders Section */}
         {activeSection === 'orders' && (
           <div className="space-y-6">
-            {/* Active Table Requests */}
-            {tableRequests.length > 0 && (
-              <Card className="border-2 border-destructive bg-destructive/5 shadow-soft">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-bold flex items-center gap-2 text-destructive">
-                    <Bell className="h-5 w-5 animate-bounce" />
-                    {language === 'kn' ? 'ಟೇಬಲ್ ಸಹಾಯ ವಿನಂತಿಗಳು' : 'Table Assistance Requests'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-2">
-                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                    {tableRequests.map((req) => (
-                      <div key={req.id} className="p-3 bg-card border rounded-lg flex items-center justify-between shadow-sm">
-                        <div>
-                          <p className="font-bold text-sm">Table {req.table_number}</p>
-                          <p className="text-xs font-semibold text-destructive mt-0.5">
-                            {req.request_type === 'Hot Water' && (language === 'kn' ? 'ಬಿಸಿ ನೀರು 💧' : 'Hot Water 💧')}
-                            {req.request_type === 'Spoon' && (language === 'kn' ? 'ಚಮಚ 🍴' : 'Spoon 🍴')}
-                            {req.request_type === 'Sauces' && (language === 'kn' ? 'ಸಾಸ್ 🥫' : 'Sauces 🥫')}
-                            {req.request_type === 'Clean Table' && (language === 'kn' ? 'ಟೇಬಲ್ ಕ್ಲೀನ್ 🧼' : 'Clean Table 🧼')}
-                            {req.request_type === 'Call Server' && (language === 'kn' ? 'ಸರ್ವರ್ ಕರೆ 🛎️' : 'Call Server 🛎️')}
-                            {req.request_type === 'Extra Plates' && (language === 'kn' ? 'ಹೆಚ್ಚುವರಿ ಪ್ಲೇಟ್ 🍽️' : 'Extra Plates 🍽️')}
-                            {!['Hot Water', 'Spoon', 'Sauces', 'Clean Table', 'Call Server', 'Extra Plates'].includes(req.request_type) && req.request_type}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground mt-1">
-                            {new Date(req.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 hover:bg-destructive hover:text-white"
-                          onClick={() => handleCompleteRequest(req.id)}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1 text-success hover:text-white" />
-                          {language === 'kn' ? 'ಮುಗಿಸು' : 'Done'}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Pending Orders */}
             <div>
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -341,6 +308,8 @@ export default function ServerDashboard() {
                       currentServer={currentServer}
                       onResetSeats={() => handleResetSeats(order.id, order.table_number, (order as any).seats || [])}
                       onAcceptOrder={() => handleAcceptOrder(order.id)}
+                      tableRequests={tableRequests.filter(req => req.table_number === order.table_number)}
+                      onToggleRequestStatus={handleToggleRequestStatus}
                     />
                   ))}
                 </div>
@@ -451,6 +420,29 @@ export default function ServerDashboard() {
   );
 }
 
+// Helper component to display relative minutes ago dynamically
+function RequestTimeAgo({ createdAt }: { createdAt: string }) {
+  const [minutes, setMinutes] = useState(0);
+
+  useEffect(() => {
+    const calculateMinutes = () => {
+      const diffMs = new Date().getTime() - new Date(createdAt).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      setMinutes(diffMins);
+    };
+
+    calculateMinutes();
+    const interval = setInterval(calculateMinutes, 30000);
+    return () => clearInterval(interval);
+  }, [createdAt]);
+
+  if (minutes <= 0) {
+    return <span>0m ago</span>;
+  } else {
+    return <span>{minutes}m ago</span>;
+  }
+}
+
 // Server Order Card Component
 interface ServerOrderCardProps {
   order: Order;
@@ -458,6 +450,8 @@ interface ServerOrderCardProps {
   currentServer: { name: string; user_id: string } | null;
   onResetSeats: () => void;
   onAcceptOrder: () => void;
+  tableRequests: any[];
+  onToggleRequestStatus: (requestId: string, currentStatus: string) => void;
 }
 
 function ServerOrderCard({ 
@@ -465,7 +459,9 @@ function ServerOrderCard({
   language, 
   currentServer,
   onResetSeats,
-  onAcceptOrder
+  onAcceptOrder,
+  tableRequests,
+  onToggleRequestStatus
 }: ServerOrderCardProps) {
   const orderedItems = order.ordered_items as Array<{
     name: string;
@@ -608,6 +604,65 @@ function ServerOrderCard({
             </Button>
           </div>
         </div>
+
+        {/* Table Service Requests */}
+        {tableRequests && tableRequests.length > 0 && (
+          <div className="space-y-2 border-t pt-3 mt-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+              <Bell className="h-3.5 w-3.5 text-destructive" />
+              {language === 'kn' ? 'ಟೇಬಲ್ ಸೇವೆ ವಿನಂತಿಗಳು' : 'Service Requests'}
+            </p>
+            <div className="space-y-1.5">
+              {tableRequests.map((req: any) => {
+                const isCompleted = req.status === 'Completed';
+                return (
+                  <div
+                    key={req.id}
+                    onClick={() => onToggleRequestStatus(req.id, req.status)}
+                    className={`flex items-center justify-between p-2 rounded-md border text-xs font-semibold cursor-pointer transition-all ${
+                      isCompleted
+                        ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400'
+                        : 'bg-destructive/5 hover:bg-destructive/10 border-destructive/20 text-destructive'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">
+                        {req.request_type === 'Hot Water' && '💧'}
+                        {req.request_type === 'Spoon' && '🍴'}
+                        {req.request_type === 'Sauces' && '🥫'}
+                        {req.request_type === 'Clean Table' && '🧼'}
+                        {req.request_type === 'Call Server' && '🛎️'}
+                        {req.request_type === 'Extra Plates' && '🍽️'}
+                      </span>
+                      <span>
+                        {req.request_type === 'Hot Water' && (language === 'kn' ? 'ಬಿಸಿ ನೀರು' : 'Hot Water')}
+                        {req.request_type === 'Spoon' && (language === 'kn' ? 'ಚಮಚ' : 'Spoon')}
+                        {req.request_type === 'Sauces' && (language === 'kn' ? 'ಸಾಸ್' : 'Sauces')}
+                        {req.request_type === 'Clean Table' && (language === 'kn' ? 'ಟೇಬಲ್ ಕ್ಲೀನ್' : 'Clean Table')}
+                        {req.request_type === 'Call Server' && (language === 'kn' ? 'ಸರ್ವರ್ ಕರೆ' : 'Call Server')}
+                        {req.request_type === 'Extra Plates' && (language === 'kn' ? 'ಹೆಚ್ಚುವರಿ ಪ್ಲೇಟ್' : 'Extra Plates')}
+                        {!['Hot Water', 'Spoon', 'Sauces', 'Clean Table', 'Call Server', 'Extra Plates'].includes(req.request_type) && req.request_type}
+                      </span>
+                    </div>
+                    <div className="text-[10px] flex items-center gap-1.5 font-medium">
+                      {isCompleted ? (
+                        <span className="bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-0.5 rounded text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          {language === 'kn' ? 'ಪೂರೈಸಲಾಗಿದೆ' : 'Served'}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <span className="w-1 h-1 rounded-full bg-destructive animate-ping"></span>
+                          <RequestTimeAgo createdAt={req.created_at} />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Payment Intent Notification */}
         {eatingFinished && paymentIntent && (
