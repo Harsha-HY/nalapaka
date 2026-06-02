@@ -11,7 +11,8 @@ import {
   History,
   Package,
   Phone,
-  MessageCircle
+  MessageCircle,
+  Bell
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useOrders, Order } from '@/hooks/useOrders';
@@ -28,6 +29,7 @@ import { PairingSuggestions } from '@/components/PairingSuggestions';
 import { useCart } from '@/contexts/CartContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 export default function OrderStatusPage() {
   const { t, language } = useLanguage();
@@ -67,7 +69,6 @@ export default function OrderStatusPage() {
           event: '*',
           schema: 'public',
           table: 'table_requests',
-          filter: `table_number=eq.${currentOrder.table_number}`,
         },
         () => {
           fetchActiveRequests();
@@ -337,52 +338,94 @@ export default function OrderStatusPage() {
           </Card>
         )}
 
-        {/* Table Assistance / Service Request */}
+        {/* Table Assistance / Service Request - Slide Out Left Side Panel */}
         {!paymentConfirmed && !isCancelled && orderType === 'dine-in' && (
-          <Card className="shadow-soft border-0 animate-slide-up bg-card">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <UtensilsCrossed className="h-5 w-5 text-primary" />
-                {language === 'kn' ? 'ಟೇಬಲ್ ಸೇವೆ ಬೇಕೇ?' : 'Need Assistance?'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                {language === 'kn' 
-                  ? 'ಯಾವುದೇ ಸೇವೆಗಾಗಿ ವಿನಂತಿಸಿ, ಸರ್ವರ್ ತಕ್ಷಣವೇ ನಿಮ್ಮ ಬಳಿಗೆ ಬರುತ್ತಾರೆ.' 
-                  : 'Select a service below and your server will assist you shortly.'}
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'Hot Water', labelEn: 'Hot Water', labelKn: 'ಬಿಸಿ ನೀರು', icon: '💧' },
-                  { id: 'Clean Table', labelEn: 'Clean Table', labelKn: 'ಟೇಬಲ್ ಕ್ಲೀನ್', icon: '🧼' },
-                  { id: 'Call Server', labelEn: 'Call Server', labelKn: 'ಸರ್ವರ್ ಕರೆ', icon: '🛎️' },
-                  { id: 'Extra Plates', labelEn: 'Extra Plates', labelKn: 'ಹೆಚ್ಚುವರಿ ಪ್ಲೇಟ್', icon: '🍽️' }
-                ].map((req) => {
-                  const isActive = activeRequests.includes(req.id);
-                  const isLoading = requestLoading[req.id];
-                  return (
-                    <Button
-                      key={req.id}
-                      variant={isActive ? 'default' : 'outline'}
-                      size="sm"
-                      className="h-14 flex flex-col items-center justify-center p-2 relative"
-                      disabled={isLoading || isActive}
-                      onClick={() => handleRequestService(req.id)}
-                    >
-                      <span className="text-base mb-1">{req.icon}</span>
-                      <span className="text-xs font-semibold text-center">
-                        {language === 'kn' ? req.labelKn : req.labelEn}
-                      </span>
-                      {isActive && (
-                        <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive animate-ping"></span>
-                      )}
-                    </Button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="fixed bottom-6 left-6 z-50 animate-bounce">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button
+                  size="lg"
+                  className="rounded-full shadow-lg h-14 w-14 bg-destructive hover:bg-destructive/95 text-white flex items-center justify-center relative p-0 border border-white/20"
+                >
+                  <Bell className="h-6 w-6" />
+                  {activeRequests.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-white text-destructive font-bold text-xs h-5 w-5 rounded-full flex items-center justify-center border-2 border-destructive animate-pulse">
+                      {activeRequests.length}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[320px] sm:w-[385px] p-6 bg-card text-card-foreground flex flex-col">
+                <div className="space-y-4 flex-1">
+                  <div>
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <UtensilsCrossed className="h-5 w-5 text-primary" />
+                      {language === 'kn' ? 'ಟೇಬಲ್ ಸೇವೆ' : 'Table Service'}
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {language === 'kn'
+                        ? 'ಸೇವೆಗಾಗಿ ವಿನಂತಿಸಿ, ಸರ್ವರ್ ತಕ್ಷಣವೇ ನಿಮ್ಮ ಬಳಿಗೆ ಬರುತ್ತಾರೆ.'
+                        : 'Select a service below and your server will assist you shortly.'}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-3 pt-4 overflow-y-auto max-h-[70vh]">
+                    {[
+                      { id: 'Hot Water', labelEn: 'Hot Water', labelKn: 'ಬಿಸಿ ನೀರು', icon: '💧' },
+                      { id: 'Spoon', labelEn: 'Spoon', labelKn: 'ಚಮಚ', icon: '🍴' },
+                      { id: 'Sauces', labelEn: 'Sauces', labelKn: 'ಸಾಸ್', icon: '🥫' },
+                      { id: 'Clean Table', labelEn: 'Clean Table', labelKn: 'ಟೇಬಲ್ ಕ್ಲೀನ್', icon: '🧼' },
+                      { id: 'Call Server', labelEn: 'Call Server', labelKn: 'ಸರ್ವರ್ ಕರೆ', icon: '🛎️' },
+                      { id: 'Extra Plates', labelEn: 'Extra Plates', labelKn: 'ಹೆಚ್ಚುವರಿ ಪ್ಲೇಟ್', icon: '🍽️' }
+                    ].map((req) => {
+                      const isActive = activeRequests.includes(req.id);
+                      const isLoading = requestLoading[req.id];
+                      return (
+                        <div
+                          key={req.id}
+                          className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                            isActive 
+                              ? 'bg-destructive/10 border-destructive/20' 
+                              : 'hover:bg-accent border-border'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-3xl">{req.icon}</span>
+                            <div>
+                              <p className="text-sm font-semibold">
+                                {language === 'kn' ? req.labelKn : req.labelEn}
+                              </p>
+                              {isActive && (
+                                <p className="text-[10px] text-destructive animate-pulse font-medium">
+                                  {language === 'kn' ? 'ಸರ್ವರ್‌ಗೆ ತಿಳಿಸಲಾಗಿದೆ...' : 'Notified server...'}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <Button
+                            size="sm"
+                            variant={isActive ? 'default' : 'outline'}
+                            className={isActive ? 'bg-destructive hover:bg-destructive/90 text-white' : ''}
+                            disabled={isLoading || isActive}
+                            onClick={() => handleRequestService(req.id)}
+                          >
+                            {isLoading ? (
+                              <span className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                            ) : isActive ? (
+                              language === 'kn' ? 'ಕಳುಹಿಸಲಾಗಿದೆ' : 'Sent'
+                            ) : (
+                              language === 'kn' ? 'ವಿನಂತಿಸಿ' : 'Request'
+                            )}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         )}
 
         {/* Order details */}

@@ -53,7 +53,6 @@ export default function ServerDashboard() {
     const { data } = await supabase
       .from('table_requests' as any)
       .select('*')
-      .eq('hotel_id', hotelId)
       .eq('status', 'Pending')
       .in('table_number', currentServer.assigned_tables);
     if (data) {
@@ -83,7 +82,7 @@ export default function ServerDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentServer?.assigned_tables, hotelId]);
+  }, [currentServer?.assigned_tables]);
 
   const handleCompleteRequest = async (requestId: string) => {
     try {
@@ -294,10 +293,12 @@ export default function ServerDashboard() {
                           <p className="font-bold text-sm">Table {req.table_number}</p>
                           <p className="text-xs font-semibold text-destructive mt-0.5">
                             {req.request_type === 'Hot Water' && (language === 'kn' ? 'ಬಿಸಿ ನೀರು 💧' : 'Hot Water 💧')}
+                            {req.request_type === 'Spoon' && (language === 'kn' ? 'ಚಮಚ 🍴' : 'Spoon 🍴')}
+                            {req.request_type === 'Sauces' && (language === 'kn' ? 'ಸಾಸ್ 🥫' : 'Sauces 🥫')}
                             {req.request_type === 'Clean Table' && (language === 'kn' ? 'ಟೇಬಲ್ ಕ್ಲೀನ್ 🧼' : 'Clean Table 🧼')}
                             {req.request_type === 'Call Server' && (language === 'kn' ? 'ಸರ್ವರ್ ಕರೆ 🛎️' : 'Call Server 🛎️')}
                             {req.request_type === 'Extra Plates' && (language === 'kn' ? 'ಹೆಚ್ಚುವರಿ ಪ್ಲೇಟ್ 🍽️' : 'Extra Plates 🍽️')}
-                            {!['Hot Water', 'Clean Table', 'Call Server', 'Extra Plates'].includes(req.request_type) && req.request_type}
+                            {!['Hot Water', 'Spoon', 'Sauces', 'Clean Table', 'Call Server', 'Extra Plates'].includes(req.request_type) && req.request_type}
                           </p>
                           <p className="text-[10px] text-muted-foreground mt-1">
                             {new Date(req.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
