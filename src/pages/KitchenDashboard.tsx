@@ -300,7 +300,13 @@ export default function KitchenDashboard() {
                           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Original Order</p>
                           {originalItems.map((item, idx) => (
                             <div key={idx} className="flex justify-between items-center py-1 border-b border-muted/50 last:border-0">
-                              <span className="font-bold text-foreground text-md">{item.name}</span>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-foreground text-md">{item.name}</span>
+                                <span className="text-[9px] text-muted-foreground font-semibold flex items-center gap-0.5 mt-0.5">
+                                  <Clock className="h-3 w-3 text-muted-foreground/75" />
+                                  <RequestTimeAgo createdAt={order.created_at} />
+                                </span>
+                              </div>
                               <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 font-extrabold text-sm px-2.5 py-0.5">
                                 ×{item.quantity}
                               </Badge>
@@ -314,7 +320,13 @@ export default function KitchenDashboard() {
                             <p className="text-[10px] font-bold text-destructive uppercase tracking-wider">Extra Items</p>
                             {extraItems.map((item: any, idx: number) => (
                               <div key={idx} className="flex justify-between items-center py-1">
-                                <span className="font-bold text-destructive text-md">{item.name}</span>
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-destructive text-md">{item.name}</span>
+                                  <span className="text-[9px] text-destructive/80 font-semibold flex items-center gap-0.5 mt-0.5">
+                                    <Clock className="h-3 w-3 text-destructive/75" />
+                                    <RequestTimeAgo createdAt={item.addedAt || order.created_at} />
+                                  </span>
+                                </div>
                                 <Badge className="bg-destructive/10 text-destructive font-extrabold text-sm px-2.5 py-0.5">
                                   ×{item.quantity}
                                 </Badge>
@@ -414,21 +426,27 @@ export default function KitchenDashboard() {
   );
 }
 
-// Item Timer component to compute relative elapsed time
-function ItemTimer({ createdAt }: { createdAt: string }) {
+// RequestTimeAgo component to compute relative elapsed time
+function RequestTimeAgo({ createdAt }: { createdAt: string }) {
   const [minutes, setMinutes] = useState(0);
 
   useEffect(() => {
-    const calc = () => {
-      const ms = Date.now() - new Date(createdAt).getTime();
-      setMinutes(Math.floor(ms / 60000));
+    const calculateMinutes = () => {
+      const diffMs = new Date().getTime() - new Date(createdAt).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      setMinutes(diffMins);
     };
-    calc();
-    const interval = setInterval(calc, 30000);
+
+    calculateMinutes();
+    const interval = setInterval(calculateMinutes, 30000);
     return () => clearInterval(interval);
   }, [createdAt]);
 
-  return <span className="text-[10px] font-medium opacity-80 font-mono">({minutes < 1 ? '0m ago' : `${minutes}m ago`})</span>;
+  if (minutes <= 0) {
+    return <span>0m ago</span>;
+  } else {
+    return <span>{minutes}m ago</span>;
+  }
 }
 
 // Kitchen Order Card - Readability optimized for fast-paced kitchens
@@ -540,9 +558,15 @@ function KitchenOrderCard({
           <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Original Order</p>
           {originalItems.map((item, index) => (
             <div key={index} className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-              <span className="font-extrabold text-slate-800 dark:text-slate-200 text-lg">
-                {item.name}
-              </span>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-slate-800 dark:text-slate-200 text-lg">
+                  {item.name}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-0.5 mt-0.5">
+                  <Clock className="h-3 w-3 text-muted-foreground/75" />
+                  <RequestTimeAgo createdAt={order.created_at} />
+                </span>
+              </div>
               <Badge className="bg-primary text-primary-foreground font-black text-md px-3 py-1 shadow-sm">
                 ×{item.quantity}
               </Badge>
@@ -566,7 +590,10 @@ function KitchenOrderCard({
                 >
                   <div className="flex flex-col">
                     <span className="font-bold text-base line-through opacity-80">{item.name}</span>
-                    {item.addedAt && <ItemTimer createdAt={item.addedAt} />}
+                    <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-0.5 mt-0.5">
+                      <Clock className="h-3 w-3 text-muted-foreground/75" />
+                      <RequestTimeAgo createdAt={item.addedAt || order.created_at} />
+                    </span>
                   </div>
                   <Badge className="bg-emerald-600 text-white font-extrabold text-xs">
                     ×{item.quantity}
@@ -593,7 +620,10 @@ function KitchenOrderCard({
                 >
                   <div className="flex flex-col">
                     <span className="font-extrabold text-base">{item.name}</span>
-                    {item.addedAt && <ItemTimer createdAt={item.addedAt} />}
+                    <span className="text-[10px] text-destructive font-semibold flex items-center gap-0.5 mt-0.5 animate-pulse">
+                      <Clock className="h-3 w-3 text-destructive/75" />
+                      <RequestTimeAgo createdAt={item.addedAt || order.created_at} />
+                    </span>
                   </div>
                   <Badge variant="destructive" className="font-extrabold text-xs px-2 py-0.5">
                     ×{item.quantity}

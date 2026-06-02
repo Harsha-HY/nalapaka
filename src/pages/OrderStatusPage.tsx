@@ -160,6 +160,7 @@ export default function OrderStatusPage() {
       quantity: number;
       price: number;
     }>;
+  const extraItems = (currentOrder as any).extra_items || [];
 
   const handleMarkFinished = async () => {
     setShowPaymentOptions(true);
@@ -476,6 +477,29 @@ export default function OrderStatusPage() {
                   </div>
                 ))}
               </div>
+
+              {extraItems.length > 0 && (
+                <div className="pt-3 border-t border-dashed mt-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-destructive mb-2 flex items-center gap-1.5 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-ping"></span>
+                    {language === 'kn' ? 'ಹೆಚ್ಚುವರಿ ಐಟಂಗಳು' : 'Extra Items'}
+                  </p>
+                  <div className="space-y-2">
+                    {extraItems.map((item: any, index: number) => (
+                      <div key={index} className="flex justify-between items-center text-sm py-1 font-semibold text-destructive">
+                        <div className="flex flex-col">
+                          <span>{language === 'kn' ? item.nameKn || item.name : item.name} × {item.quantity}</span>
+                          <span className="text-[10px] text-destructive/80 font-medium flex items-center gap-0.5 mt-0.5">
+                            <Clock className="h-2.5 w-2.5 text-destructive/70 mr-0.5" />
+                            <RequestTimeAgo createdAt={item.addedAt || currentOrder.created_at} />
+                          </span>
+                        </div>
+                        {item.price && <span>₹{item.price * item.quantity}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               <Separator className="my-3" />
               
@@ -654,4 +678,26 @@ export default function OrderStatusPage() {
       />
     </div>
   );
+}
+
+function RequestTimeAgo({ createdAt }: { createdAt: string }) {
+  const [minutes, setMinutes] = useState(0);
+
+  useEffect(() => {
+    const calculateMinutes = () => {
+      const diffMs = new Date().getTime() - new Date(createdAt).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      setMinutes(diffMins);
+    };
+
+    calculateMinutes();
+    const interval = setInterval(calculateMinutes, 30000);
+    return () => clearInterval(interval);
+  }, [createdAt]);
+
+  if (minutes <= 0) {
+    return <span>0m ago</span>;
+  } else {
+    return <span>{minutes}m ago</span>;
+  }
 }
