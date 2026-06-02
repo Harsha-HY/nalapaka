@@ -340,8 +340,6 @@ export default function ServerDashboard() {
                       language={language}
                       currentServer={currentServer}
                       onResetSeats={() => handleResetSeats(order.id, order.table_number, (order as any).seats || [])}
-                      onPrintKitchen={() => handlePrintKitchen(order, false)}
-                      onPrintExtraKitchen={() => handlePrintKitchen(order, true)}
                       onAcceptOrder={() => handleAcceptOrder(order.id)}
                     />
                   ))}
@@ -459,8 +457,6 @@ interface ServerOrderCardProps {
   language: 'en' | 'kn';
   currentServer: { name: string; user_id: string } | null;
   onResetSeats: () => void;
-  onPrintKitchen: () => void;
-  onPrintExtraKitchen: () => void;
   onAcceptOrder: () => void;
 }
 
@@ -469,8 +465,6 @@ function ServerOrderCard({
   language, 
   currentServer,
   onResetSeats,
-  onPrintKitchen,
-  onPrintExtraKitchen,
   onAcceptOrder
 }: ServerOrderCardProps) {
   const orderedItems = order.ordered_items as Array<{
@@ -527,18 +521,36 @@ function ServerOrderCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Print Buttons */}
-        <Button variant="outline" size="sm" className="w-full" onClick={onPrintKitchen}>
-          <Printer className="h-4 w-4 mr-1" />
-          Print Kitchen Slip
-        </Button>
-
-        {extraItems.length > 0 && (
-          <Button variant="outline" size="sm" className="w-full bg-accent" onClick={onPrintExtraKitchen}>
-            <Printer className="h-4 w-4 mr-1" />
-            Print EXTRA Items
-          </Button>
-        )}
+        {/* Ordered Items */}
+        <div className="bg-muted/40 p-3 rounded-lg border space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            {language === 'kn' ? 'ಆರ್ಡರ್ ಮಾಡಿದ ಐಟಂಗಳು' : 'Ordered Items'}
+          </p>
+          <div className="space-y-1">
+            {orderedItems.map((item, index) => (
+              <div key={index} className="flex justify-between text-sm font-semibold">
+                <span>{language === 'kn' ? item.nameKn : item.name} × {item.quantity}</span>
+                <span>₹{item.price * item.quantity}</span>
+              </div>
+            ))}
+          </div>
+          
+          {extraItems.length > 0 && (
+            <div className="pt-2 border-t border-border mt-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-destructive">
+                {language === 'kn' ? 'ಹೆಚ್ಚುವರಿ ಐಟಂಗಳು' : 'Extra Items'}
+              </p>
+              <div className="space-y-1 mt-1">
+                {extraItems.map((item: any, index: number) => (
+                  <div key={index} className="flex justify-between text-xs text-destructive font-semibold">
+                    <span>{language === 'kn' ? item.nameKn || item.name : item.name} × {item.quantity}</span>
+                    {item.price && <span>₹{item.price * item.quantity}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Server Acceptance Status */}
         {acceptedByServerName && (
@@ -622,20 +634,7 @@ function ServerOrderCard({
           </div>
         )}
 
-        <Separator />
 
-        {/* Items */}
-        <div className="space-y-1 max-h-32 overflow-auto">
-          {orderedItems.map((item, index) => (
-            <div key={index} className="flex justify-between text-sm">
-              <span>{language === 'kn' ? item.nameKn : item.name} × {item.quantity}</span>
-              <span>₹{item.price * item.quantity}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Extra Items */}
-        <OrderExtraItemsBadge extraItems={extraItems} />
 
         <Separator />
 
