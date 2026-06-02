@@ -26,6 +26,7 @@ DROP POLICY IF EXISTS "Guests can insert table requests" ON public.table_request
 DROP POLICY IF EXISTS "Servers view assigned table requests" ON public.table_requests;
 DROP POLICY IF EXISTS "Servers update assigned table requests" ON public.table_requests;
 DROP POLICY IF EXISTS "Managers manage table requests" ON public.table_requests;
+DROP POLICY IF EXISTS "Anyone can delete table requests" ON public.table_requests;
 
 -- Policies for table_requests
 -- Allow both anon and authenticated users to insert table requests
@@ -53,3 +54,9 @@ CREATE POLICY "Servers update assigned table requests"
 CREATE POLICY "Managers manage table requests"
   ON public.table_requests FOR ALL TO authenticated
   USING (is_manager() AND hotel_id = current_hotel_id());
+
+CREATE POLICY "Anyone can delete table requests"
+  ON public.table_requests FOR DELETE
+  TO anon, authenticated
+  USING (true);
+

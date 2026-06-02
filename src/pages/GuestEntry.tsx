@@ -113,6 +113,13 @@ export default function GuestEntry() {
         const active = (orderRows && orderRows[0]) as ActiveOrder | undefined;
 
         if (!active) {
+          if (tableNumberParam && tableNumberParam.trim() && hotel) {
+            await supabase
+              .from('table_requests' as any)
+              .delete()
+              .eq('table_number', tableNumberParam.trim())
+              .eq('hotel_id', hotel.id);
+          }
           navigate('/menu', { replace: true });
           return;
         }

@@ -234,8 +234,22 @@ export function useOrders() {
   };
 
   const cancelOrder = async (orderId: string) => {
+    const { data: orderData } = await supabase
+      .from('orders')
+      .select('table_number, hotel_id')
+      .eq('id', orderId)
+      .maybeSingle();
+
     const { error } = await supabase.from('orders').update({ order_status: 'Cancelled' }).eq('id', orderId);
     if (error) throw error;
+
+    if (orderData) {
+      await supabase
+        .from('table_requests' as any)
+        .delete()
+        .eq('table_number', orderData.table_number)
+        .eq('hotel_id', orderData.hotel_id);
+    }
   };
 
   const deleteOrder = async (orderId: string) => {
