@@ -102,8 +102,9 @@ export default function OrderStatusPage() {
           : `Requested ${type} successfully!`
       );
       fetchActiveRequests();
-    } catch (e) {
-      toast.error('Failed to request service');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to request service');
+      console.error('Table request insert failed:', e);
     } finally {
       setRequestLoading(prev => ({ ...prev, [type]: false }));
     }
