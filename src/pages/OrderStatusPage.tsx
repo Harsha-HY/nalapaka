@@ -26,6 +26,7 @@ import { UPIPaymentModal } from '@/components/UPIPaymentModal';
 import { CustomerReviewModal } from '@/components/CustomerReviewModal';
 import { PairingSuggestions } from '@/components/PairingSuggestions';
 import { useCart } from '@/contexts/CartContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function OrderStatusPage() {
@@ -38,6 +39,74 @@ export default function OrderStatusPage() {
   const [showUPIModal, setShowUPIModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [hasShownReview, setHasShownReview] = useState(false);
+  const [activeRequests, setActiveRequests] = useState<string[]>([]);
+  const [requestLoading, setRequestLoading] = useState<Record<string, boolean>>({});
+
+  const fetchActiveRequests = async () => {
+    if (!currentOrder) return;
+    const { data } = await supabase
+      .from('table_requests' as any)
+      .select('request_type')
+      .eq('hotel_id', currentOrder.hotel_id)
+      .eq('table_number', currentOrder.table_number)
+      .eq('status', 'Pending');
+    if (data) {
+      setActiveRequests(data.map((r: any) => r.request_type));
+    }
+  };
+
+  useEffect(() => {
+    if (!currentOrder) return;
+    fetchActiveRequests();
+
+    const channel = supabase
+      .channel('table-requests-customer')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'table_requests',
+          filter: `table_number=eq.${currentOrder.table_number}`,
+        },
+        () => {
+          fetchActiveRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentOrder?.table_number, currentOrder?.hotel_id]);
+
+  const handleRequestService = async (type: string) => {
+    if (!currentOrder) return;
+    if (activeRequests.includes(type)) return;
+
+    setRequestLoading(prev => ({ ...prev, [type]: true }));
+    try {
+      const { error } = await supabase
+        .from('table_requests' as any)
+        .insert({
+          hotel_id: currentOrder.hotel_id,
+          table_number: currentOrder.table_number,
+          request_type: type,
+          status: 'Pending'
+        });
+      if (error) throw error;
+      toast.success(
+        language === 'kn'
+          ? `${type} ಗಾಗಿ ವಿನಂತಿಯನ್ನು ಕಳುಹಿಸಲಾಗಿದೆ`
+          : `Requested ${type} successfully!`
+      );
+      fetchActiveRequests();
+    } catch (e) {
+      toast.error('Failed to request service');
+    } finally {
+      setRequestLoading(prev => ({ ...prev, [type]: false }));
+    }
+  };
 
   // Show review modal after payment is confirmed
   useEffect(() => {
@@ -203,7 +272,7 @@ export default function OrderStatusPage() {
             </div>
             <h1 className="text-2xl font-bold text-warning">{t('waitingConfirmation')}</h1>
             <p className="text-sm text-warning/80 mt-1">
-              {language === 'kn' ? 'ಅಡುಗೆಮನೆ ದೃಢೀಕರಣಕ್ಕಾಗಿ ಕಾಯುತ್ತಿದೆ...' : 'Waiting for kitchen confirmation...'}
+              {language === 'kn' ? 'ಅಸ್ತಿತ್ವದಲ್ಲಿರುವ ಆರ್ಡರ್ ಕಾಯುತ್ತಿದೆ...' : 'Waiting for kitchen confirmation...'}
             </p>
           </div>
         )}
@@ -264,6 +333,54 @@ export default function OrderStatusPage() {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Table Assistance / Service Request */}
+        {!paymentConfirmed && !isCancelled && orderType === 'dine-in' && (
+          <Card className="shadow-soft border-0 animate-slide-up bg-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <UtensilsCrossed className="h-5 w-5 text-primary" />
+                {language === 'kn' ? 'ಟೇಬಲ್ ಸೇವೆ ಬೇಕೇ?' : 'Need Assistance?'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                {language === 'kn' 
+                  ? 'ಯಾವುದೇ ಸೇವೆಗಾಗಿ ವಿನಂತಿಸಿ, ಸರ್ವರ್ ತಕ್ಷಣವೇ ನಿಮ್ಮ ಬಳಿಗೆ ಬರುತ್ತಾರೆ.' 
+                  : 'Select a service below and your server will assist you shortly.'}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'Hot Water', labelEn: 'Hot Water', labelKn: 'ಬಿಸಿ ನೀರು', icon: '💧' },
+                  { id: 'Clean Table', labelEn: 'Clean Table', labelKn: 'ಟೇಬಲ್ ಕ್ಲೀನ್', icon: '🧼' },
+                  { id: 'Call Server', labelEn: 'Call Server', labelKn: 'ಸರ್ವರ್ ಕರೆ', icon: '🛎️' },
+                  { id: 'Extra Plates', labelEn: 'Extra Plates', labelKn: 'ಹೆಚ್ಚುವರಿ ಪ್ಲೇಟ್', icon: '🍽️' }
+                ].map((req) => {
+                  const isActive = activeRequests.includes(req.id);
+                  const isLoading = requestLoading[req.id];
+                  return (
+                    <Button
+                      key={req.id}
+                      variant={isActive ? 'default' : 'outline'}
+                      size="sm"
+                      className="h-14 flex flex-col items-center justify-center p-2 relative"
+                      disabled={isLoading || isActive}
+                      onClick={() => handleRequestService(req.id)}
+                    >
+                      <span className="text-base mb-1">{req.icon}</span>
+                      <span className="text-xs font-semibold text-center">
+                        {language === 'kn' ? req.labelKn : req.labelEn}
+                      </span>
+                      {isActive && (
+                        <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive animate-ping"></span>
+                      )}
+                    </Button>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
         )}

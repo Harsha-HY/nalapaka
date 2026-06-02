@@ -83,6 +83,41 @@ export default function ManagerDashboard() {
     }
   }, [isManager, navigate]);
 
+  // Daily Order and Assistance Requests Reset on mount
+  useEffect(() => {
+    const runDailyReset = async () => {
+      if (!hotel) return;
+      try {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        // Delete all orders created before today for this hotel
+        const { error: orderError } = await supabase
+          .from('orders')
+          .delete()
+          .eq('hotel_id', hotel.id)
+          .lt('created_at', todayStart.toISOString());
+
+        if (orderError) throw orderError;
+
+        // Delete all table requests created before today for this hotel
+        await supabase
+          .from('table_requests' as any)
+          .delete()
+          .eq('hotel_id', hotel.id)
+          .lt('created_at', todayStart.toISOString());
+
+        console.log('Daily order & requests reset executed for date:', todayStart.toLocaleDateString());
+      } catch (error) {
+        console.error('Failed to run daily order reset:', error);
+      }
+    };
+
+    if (isManager && hotel) {
+      runDailyReset();
+    }
+  }, [isManager, hotel]);
+
   // Get today's date for filtering
   const today = useMemo(() => {
     const d = new Date();

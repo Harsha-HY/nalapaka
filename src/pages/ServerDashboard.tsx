@@ -14,7 +14,9 @@ import {
   User,
   History,
   Table,
-  UserCheck
+  UserCheck,
+  Bell,
+  ChefHat
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +32,8 @@ import { OrderExtraItemsBadge } from '@/components/OrderExtraItemsBadge';
 import { QRCodePayment } from '@/components/QRCodePayment';
 import { printKitchenSlip } from '@/components/KitchenSlipPrint';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useHotelContext } from '@/hooks/useHotelContext';
 
 type ServerSection = 'orders' | 'history';
 
@@ -41,6 +45,59 @@ export default function ServerDashboard() {
   const { unlockSeatsByOrderId } = useLockedSeats();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<ServerSection>('orders');
+  const { hotelId } = useHotelContext();
+  const [tableRequests, setTableRequests] = useState<any[]>([]);
+
+  const fetchTableRequests = async () => {
+    if (!currentServer || !user) return;
+    const { data } = await supabase
+      .from('table_requests' as any)
+      .select('*')
+      .eq('hotel_id', hotelId)
+      .eq('status', 'Pending')
+      .in('table_number', currentServer.assigned_tables);
+    if (data) {
+      setTableRequests(data);
+    }
+  };
+
+  useEffect(() => {
+    if (!currentServer) return;
+    fetchTableRequests();
+
+    const channel = supabase
+      .channel('server-table-requests')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'table_requests',
+        },
+        () => {
+          fetchTableRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentServer?.assigned_tables, hotelId]);
+
+  const handleCompleteRequest = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('table_requests' as any)
+        .update({ status: 'Completed' })
+        .eq('id', requestId);
+      if (error) throw error;
+      toast.success(language === 'kn' ? 'ವಿನಂತಿಯನ್ನು ಪೂರ್ಣಗೊಳಿಸಲಾಗಿದೆ' : 'Request completed!');
+      fetchTableRequests();
+    } catch (e) {
+      toast.error('Failed to complete request');
+    }
+  };
 
   // Redirect if not a server - STRICT server-only access
   useEffect(() => {
@@ -220,6 +277,48 @@ export default function ServerDashboard() {
         {/* Orders Section */}
         {activeSection === 'orders' && (
           <div className="space-y-6">
+            {/* Active Table Requests */}
+            {tableRequests.length > 0 && (
+              <Card className="border-2 border-destructive bg-destructive/5 shadow-soft">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2 text-destructive">
+                    <Bell className="h-5 w-5 animate-bounce" />
+                    {language === 'kn' ? 'ಟೇಬಲ್ ಸಹಾಯ ವಿನಂತಿಗಳು' : 'Table Assistance Requests'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-2">
+                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                    {tableRequests.map((req) => (
+                      <div key={req.id} className="p-3 bg-card border rounded-lg flex items-center justify-between shadow-sm">
+                        <div>
+                          <p className="font-bold text-sm">Table {req.table_number}</p>
+                          <p className="text-xs font-semibold text-destructive mt-0.5">
+                            {req.request_type === 'Hot Water' && (language === 'kn' ? 'ಬಿಸಿ ನೀರು 💧' : 'Hot Water 💧')}
+                            {req.request_type === 'Clean Table' && (language === 'kn' ? 'ಟೇಬಲ್ ಕ್ಲೀನ್ 🧼' : 'Clean Table 🧼')}
+                            {req.request_type === 'Call Server' && (language === 'kn' ? 'ಸರ್ವರ್ ಕರೆ 🛎️' : 'Call Server 🛎️')}
+                            {req.request_type === 'Extra Plates' && (language === 'kn' ? 'ಹೆಚ್ಚುವರಿ ಪ್ಲೇಟ್ 🍽️' : 'Extra Plates 🍽️')}
+                            {!['Hot Water', 'Clean Table', 'Call Server', 'Extra Plates'].includes(req.request_type) && req.request_type}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            {new Date(req.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 hover:bg-destructive hover:text-white"
+                          onClick={() => handleCompleteRequest(req.id)}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1 text-success hover:text-white" />
+                          {language === 'kn' ? 'ಮುಗಿಸು' : 'Done'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Pending Orders */}
             <div>
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -456,6 +555,16 @@ function ServerOrderCard({
             <CheckCircle className="h-4 w-4" />
             <span className="text-sm font-medium">
               Kitchen confirmed order – proceed service
+            </span>
+          </div>
+        )}
+
+        {/* Kitchen Prepared Status */}
+        {(order as any).kitchen_prepared_at && (
+          <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 animate-pulse">
+            <ChefHat className="h-4 w-4 animate-bounce" />
+            <span className="text-sm font-semibold">
+              {language === 'kn' ? 'ಆಹಾರ ಸಿದ್ಧವಾಗಿದೆ! ಬಡಿಸಲು ಸಿದ್ಧ' : 'Food is Prepared! Ready to Serve'}
             </span>
           </div>
         )}

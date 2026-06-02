@@ -12,6 +12,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders, Order } from '@/hooks/useOrders';
 import { useKitchenStaff } from '@/hooks/useKitchenStaff';
+import { useHotelContext } from '@/hooks/useHotelContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,9 +26,10 @@ export default function KitchenDashboard() {
   const { signOut, user } = useAuth();
   const { orders, isLoading, refreshOrders, kitchenAcceptOrder, kitchenMarkPrepared, cleanupPreparedOlderThan24Hours } = useOrders();
   const { currentKitchen } = useKitchenStaff();
+  const { hotelName } = useHotelContext();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<KitchenSection>('active');
-
+  
   useEffect(() => {
     if (!currentKitchen) {
       const timer = setTimeout(() => {
@@ -110,8 +112,8 @@ export default function KitchenDashboard() {
               <ChefHat className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-foreground">{currentKitchen.name}</h1>
-              <p className="text-xs text-muted-foreground">Kitchen Dashboard</p>
+              <h1 className="text-lg font-bold text-foreground">{hotelName || 'Dining Hub'}</h1>
+              <p className="text-xs text-muted-foreground">Kitchen: {currentKitchen.name}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
