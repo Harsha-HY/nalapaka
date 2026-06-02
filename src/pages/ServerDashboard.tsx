@@ -507,6 +507,22 @@ function ServerOrderCard({
                 )}
               </>
             )}
+
+            {/* Relative Order Placed Time */}
+            <div className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 mt-0.5">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground/70" />
+              <span>Ordered:</span>
+              <RequestTimeAgo createdAt={order.created_at} />
+            </div>
+
+            {/* Relative Extra Items Placed Time */}
+            {extraItems.length > 0 && (
+              <div className="text-[11px] text-destructive font-semibold flex items-center gap-1 mt-0.5 animate-pulse">
+                <AlertCircle className="h-3.5 w-3.5" />
+                <span>Extra items:</span>
+                <RequestTimeAgo createdAt={extraItems[extraItems.length - 1].addedAt || order.created_at} />
+              </div>
+            )}
           </div>
           <Badge 
             variant={isPending ? 'secondary' : 'default'}
