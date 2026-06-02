@@ -18,14 +18,21 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { OrderExtraItemsBadge } from '@/components/OrderExtraItemsBadge';
 import { toast } from 'sonner';
 
 type KitchenSection = 'active' | 'prepared' | 'history';
 
 export default function KitchenDashboard() {
   const { signOut, user } = useAuth();
-  const { orders, isLoading, refreshOrders, kitchenAcceptOrder, kitchenMarkPrepared, cleanupPreparedOlderThan24Hours } = useOrders();
+  const { 
+    orders, 
+    isLoading, 
+    refreshOrders, 
+    kitchenAcceptOrder, 
+    kitchenMarkPrepared, 
+    cleanupPreparedOlderThan24Hours,
+    toggleExtraItemComplete
+  } = useOrders();
   const { currentKitchen } = useKitchenStaff();
   const { hotelName } = useHotelContext();
   const navigate = useNavigate();
@@ -102,6 +109,15 @@ export default function KitchenDashboard() {
       toast.success('Order marked as prepared!');
     } catch (error) {
       toast.error('Failed to mark as prepared');
+    }
+  };
+
+  const handleToggleExtraItemComplete = async (orderId: string, itemIdx: number) => {
+    try {
+      await toggleExtraItemComplete(orderId, itemIdx);
+      toast.success('Extra item completion updated!');
+    } catch (error) {
+      toast.error('Failed to update extra item status');
     }
   };
 
@@ -222,6 +238,7 @@ export default function KitchenDashboard() {
                     currentKitchenName={currentKitchen.name}
                     onAccept={() => handleAcceptOrder(order.id)}
                     onMarkPrepared={() => handleMarkPrepared(order.id)}
+                    onToggleExtraItemComplete={(itemIdx) => handleToggleExtraItemComplete(order.id, itemIdx)}
                   />
                 ))}
               </div>
@@ -241,7 +258,10 @@ export default function KitchenDashboard() {
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {preparedOrders.map((order) => {
-                  const orderedItems = order.ordered_items as Array<{ name: string; quantity: number }>;
+                  const originalItems = ((order as any).base_items && (order as any).base_items.length > 0
+                    ? (order as any).base_items
+                    : order.ordered_items || []) as Array<{ name: string; quantity: number }>;
+                  const extraItems = (order as any).extra_items || [];
                   const seats = (order as any).seats || [];
                   const minutesAgo = Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000);
                   
@@ -274,9 +294,12 @@ export default function KitchenDashboard() {
                           <span>{order.customer_name}</span>
                         </div>
                         <Separator />
+                        
+                        {/* Base items */}
                         <div className="space-y-2">
-                          {orderedItems.map((item, idx) => (
-                            <div key={idx} className="flex justify-between items-center py-1.5 border-b border-muted/50 last:border-0">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Original Order</p>
+                          {originalItems.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center py-1 border-b border-muted/50 last:border-0">
                               <span className="font-bold text-foreground text-md">{item.name}</span>
                               <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 font-extrabold text-sm px-2.5 py-0.5">
                                 ×{item.quantity}
@@ -284,6 +307,21 @@ export default function KitchenDashboard() {
                             </div>
                           ))}
                         </div>
+
+                        {/* Extra items */}
+                        {extraItems.length > 0 && (
+                          <div className="space-y-2 pt-2 border-t">
+                            <p className="text-[10px] font-bold text-destructive uppercase tracking-wider">Extra Items</p>
+                            {extraItems.map((item: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center py-1">
+                                <span className="font-bold text-destructive text-md">{item.name}</span>
+                                <Badge className="bg-destructive/10 text-destructive font-extrabold text-sm px-2.5 py-0.5">
+                                  ×{item.quantity}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   );
@@ -305,11 +343,12 @@ export default function KitchenDashboard() {
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {historyOrders.map((order) => {
-                  const orderedItems = order.ordered_items as Array<{ name: string; quantity: number }>;
+                  const originalItems = ((order as any).base_items && (order as any).base_items.length > 0
+                    ? (order as any).base_items
+                    : order.ordered_items || []) as Array<{ name: string; quantity: number }>;
                   const extraItems = (order as any).extra_items || [];
                   const seats = (order as any).seats || [];
                   const isPaid = order.payment_confirmed;
-                  const isPrepared = !!(order as any).kitchen_prepared_at;
 
                   return (
                     <Card key={order.id} className={`shadow-sm border bg-background overflow-hidden hover:shadow-md transition-all duration-300 ${
@@ -338,22 +377,25 @@ export default function KitchenDashboard() {
                           <span>{order.payment_mode || 'Pending Payment'}</span>
                         </div>
                         <Separator />
+                        
                         <div className="space-y-1.5">
-                          {orderedItems.map((item, idx) => (
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Original Order</p>
+                          {originalItems.map((item, idx) => (
                             <div key={idx} className="flex justify-between items-center text-sm py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
                               <span className="font-semibold text-slate-700 dark:text-slate-300">{item.name}</span>
                               <span className="text-muted-foreground font-bold">×{item.quantity}</span>
                             </div>
                           ))}
                         </div>
+
                         {extraItems.length > 0 && (
                           <div className="pt-2 border-t mt-2">
                             <p className="text-[10px] font-bold uppercase tracking-wider text-destructive mb-1">Extra Items</p>
                             <div className="space-y-1.5">
                               {extraItems.map((item: any, idx: number) => (
                                 <div key={idx} className="flex justify-between items-center text-xs py-0.5">
-                                  <span className="font-semibold text-destructive">{item.name}</span>
-                                  <span className="text-destructive/80 font-bold">×{item.quantity}</span>
+                                  <span className={`font-semibold ${item.completed ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>{item.name}</span>
+                                  <span className="text-muted-foreground font-bold">×{item.quantity}</span>
                                 </div>
                               ))}
                             </div>
@@ -372,26 +414,65 @@ export default function KitchenDashboard() {
   );
 }
 
+// Item Timer component to compute relative elapsed time
+function ItemTimer({ createdAt }: { createdAt: string }) {
+  const [minutes, setMinutes] = useState(0);
+
+  useEffect(() => {
+    const calc = () => {
+      const ms = Date.now() - new Date(createdAt).getTime();
+      setMinutes(Math.floor(ms / 60000));
+    };
+    calc();
+    const interval = setInterval(calc, 30000);
+    return () => clearInterval(interval);
+  }, [createdAt]);
+
+  return <span className="text-[10px] font-medium opacity-80 font-mono">({minutes < 1 ? '0m ago' : `${minutes}m ago`})</span>;
+}
+
 // Kitchen Order Card - Readability optimized for fast-paced kitchens
 interface KitchenOrderCardProps {
   order: Order;
   currentKitchenName: string;
   onAccept: () => void;
   onMarkPrepared: () => void;
+  onToggleExtraItemComplete: (itemIdx: number) => Promise<void>;
 }
 
-function KitchenOrderCard({ order, currentKitchenName, onAccept, onMarkPrepared }: KitchenOrderCardProps) {
-  const orderedItems = order.ordered_items as Array<{
-    name: string;
-    nameKn: string;
-    quantity: number;
-  }>;
+function KitchenOrderCard({ 
+  order, 
+  currentKitchenName, 
+  onAccept, 
+  onMarkPrepared,
+  onToggleExtraItemComplete
+}: KitchenOrderCardProps) {
+  const originalItems = ((order as any).base_items && (order as any).base_items.length > 0
+    ? (order as any).base_items
+    : order.ordered_items || []) as Array<{
+      name: string;
+      nameKn: string;
+      quantity: number;
+    }>;
 
   const isPending = order.order_status === 'Pending';
   const seats = (order as any).seats || [];
   const extraItems = (order as any).extra_items || [];
   const kitchenAccepted = (order as any).accepted_by_kitchen_name;
   const isAcceptedByMe = kitchenAccepted === currentKitchenName;
+
+  // Split extra items into completed (upside) and pending (downside)
+  const indexedExtras = useMemo(() => {
+    return extraItems.map((item: any, idx: number) => ({ ...item, originalIdx: idx }));
+  }, [extraItems]);
+
+  const completedExtras = useMemo(() => {
+    return indexedExtras.filter((item: any) => item.completed);
+  }, [indexedExtras]);
+
+  const pendingExtras = useMemo(() => {
+    return indexedExtras.filter((item: any) => !item.completed);
+  }, [indexedExtras]);
 
   // Calculate dynamic minutes elapsed since order creation
   const [minutesAgo, setMinutesAgo] = useState(0);
@@ -436,7 +517,7 @@ function KitchenOrderCard({ order, currentKitchenName, onAccept, onMarkPrepared 
                 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 font-extrabold tracking-wider text-[10px]' 
                 : 'bg-blue-600 text-white font-extrabold tracking-wider text-[10px]'
             }>
-              {isPending ? 'NEW' : 'CONFIRMED'}
+              {isPending ? 'NEW' : 'ACTIVE'}
             </Badge>
             <span className={`text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${timeColor}`}>
               <Clock className="h-3.5 w-3.5" />
@@ -454,9 +535,10 @@ function KitchenOrderCard({ order, currentKitchenName, onAccept, onMarkPrepared 
 
         <Separator />
 
-        {/* Ordered Food Items - LARGE FONTS FOR HIGHEST KITCHEN READABILITY */}
+        {/* 1. Original Order List (Displayed first) */}
         <div className="space-y-2">
-          {orderedItems.map((item, index) => (
+          <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Original Order</p>
+          {originalItems.map((item, index) => (
             <div key={index} className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
               <span className="font-extrabold text-slate-800 dark:text-slate-200 text-lg">
                 {item.name}
@@ -468,17 +550,51 @@ function KitchenOrderCard({ order, currentKitchenName, onAccept, onMarkPrepared 
           ))}
         </div>
 
-        {/* Extra Items - MUST HIGHLIGHT */}
-        {extraItems.length > 0 && (
-          <div className="bg-rose-500/5 border border-rose-200 dark:border-rose-900/30 rounded-xl p-3 space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-wider text-rose-500 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
-              Extra Items Requested
+        {/* 2. Completed Extras (Moved to the upside above pending extras, turned green) */}
+        {completedExtras.length > 0 && (
+          <div className="space-y-2 pt-2 border-t">
+            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              Completed Extras
             </p>
-            <div className="space-y-1.5">
-              {extraItems.map((item: any, index: number) => (
-                <div key={index} className="flex justify-between items-center text-sm font-bold">
-                  <span className="text-rose-600 dark:text-rose-400">{item.name}</span>
+            <div className="space-y-2">
+              {completedExtras.map((item: any) => (
+                <div 
+                  key={item.originalIdx}
+                  onClick={() => onToggleExtraItemComplete(item.originalIdx)}
+                  className="flex justify-between items-center p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-400 cursor-pointer hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20 transition-all"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-bold text-base line-through opacity-80">{item.name}</span>
+                    {item.addedAt && <ItemTimer createdAt={item.addedAt} />}
+                  </div>
+                  <Badge className="bg-emerald-600 text-white font-extrabold text-xs">
+                    ×{item.quantity}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 3. Pending Extra Items (Displayed downside, clickable) */}
+        {pendingExtras.length > 0 && (
+          <div className="space-y-2 pt-2 border-t">
+            <p className="text-[10px] font-black uppercase tracking-wider text-rose-500 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
+              Pending Extras (Click to complete)
+            </p>
+            <div className="space-y-2">
+              {pendingExtras.map((item: any) => (
+                <div 
+                  key={item.originalIdx}
+                  onClick={() => onToggleExtraItemComplete(item.originalIdx)}
+                  className="flex justify-between items-center p-2.5 rounded-lg bg-rose-500/5 dark:bg-rose-950/10 border border-rose-200 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 cursor-pointer hover:bg-rose-500/10 hover:scale-[1.01] transition-all"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-extrabold text-base">{item.name}</span>
+                    {item.addedAt && <ItemTimer createdAt={item.addedAt} />}
+                  </div>
                   <Badge variant="destructive" className="font-extrabold text-xs px-2 py-0.5">
                     ×{item.quantity}
                   </Badge>

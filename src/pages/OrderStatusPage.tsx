@@ -152,12 +152,14 @@ export default function OrderStatusPage() {
   const confirmedAt = (currentOrder as Order).confirmed_at;
   const serverName = (currentOrder as any).server_name;
 
-  const orderedItems = currentOrder.ordered_items as Array<{
-    name: string;
-    nameKn: string;
-    quantity: number;
-    price: number;
-  }>;
+  const originalItems = ((currentOrder as any).base_items && (currentOrder as any).base_items.length > 0
+    ? (currentOrder as any).base_items
+    : currentOrder.ordered_items || []) as Array<{
+      name: string;
+      nameKn: string;
+      quantity: number;
+      price: number;
+    }>;
 
   const handleMarkFinished = async () => {
     setShowPaymentOptions(true);
@@ -465,7 +467,7 @@ export default function OrderStatusPage() {
               <Separator className="my-3" />
               
               <div className="space-y-2">
-                {orderedItems.map((item, index) => (
+                {originalItems.map((item, index) => (
                   <div key={index} className="flex justify-between text-sm py-1">
                     <span className="text-foreground">
                       {language === 'kn' ? item.nameKn : item.name} × {item.quantity}
@@ -489,7 +491,7 @@ export default function OrderStatusPage() {
         {isConfirmed && !eatingFinished && !paymentConfirmed && (
           <>
             <PairingSuggestions
-              contextItems={orderedItems.map((i) => ({ id: (i as any).id || i.name, name: i.name }))}
+              contextItems={originalItems.map((i) => ({ id: (i as any).id || i.name, name: i.name }))}
               title={language === 'kn' ? 'ಮುಂದೆ ಇದನ್ನು ಸೇರಿಸಿ' : 'Add this next'}
               onAdd={(it) => {
                 addItem(it as any);
@@ -589,7 +591,12 @@ export default function OrderStatusPage() {
           <Button
             variant="outline"
             className="w-full h-12 shadow-sm"
-            onClick={() => navigate('/order-history')}
+            onClick={() => {
+              if (currentOrder && currentOrder.payment_confirmed) {
+                sessionStorage.setItem(`dismissed_completed_order_${currentOrder.id}`, 'true');
+              }
+              navigate('/order-history');
+            }}
           >
             <History className="h-4 w-4 mr-2" />
             {language === 'kn' ? 'ಆರ್ಡರ್ ಇತಿಹಾಸ' : 'Order History'}
@@ -598,7 +605,12 @@ export default function OrderStatusPage() {
           <Button
             variant="outline"
             className="w-full h-12 shadow-sm"
-            onClick={() => navigate('/menu')}
+            onClick={() => {
+              if (currentOrder && currentOrder.payment_confirmed) {
+                sessionStorage.setItem(`dismissed_completed_order_${currentOrder.id}`, 'true');
+              }
+              navigate('/menu');
+            }}
           >
             <Home className="h-4 w-4 mr-2" />
             {t('menu')}
@@ -626,7 +638,13 @@ export default function OrderStatusPage() {
       {/* Customer Review Modal */}
       <CustomerReviewModal
         open={showReviewModal}
-        onClose={() => setShowReviewModal(false)}
+        onClose={() => {
+          setShowReviewModal(false);
+          if (currentOrder && currentOrder.payment_confirmed) {
+            sessionStorage.setItem(`dismissed_completed_order_${currentOrder.id}`, 'true');
+            navigate('/menu');
+          }
+        }}
         customerName={currentOrder.customer_name}
         phoneNumber={currentOrder.phone_number}
         tableNumber={currentOrder.table_number}

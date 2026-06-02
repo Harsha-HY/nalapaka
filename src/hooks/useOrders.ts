@@ -64,9 +64,16 @@ export function useOrders() {
         const activeOrder = data.find(
           (o) => o.order_stage !== 'completed' && !o.payment_confirmed
         );
-        // Fallback: if there's no live active order, keep the most recent order
-        // visible briefly so the post-payment review modal can trigger.
-        setCurrentOrder((activeOrder as Order) || (data[0] as Order) || null);
+        
+        let fallbackOrder = data[0];
+        if (fallbackOrder && fallbackOrder.payment_confirmed) {
+          const isDismissed = sessionStorage.getItem(`dismissed_completed_order_${fallbackOrder.id}`);
+          if (isDismissed === 'true') {
+            fallbackOrder = null;
+          }
+        }
+        
+        setCurrentOrder((activeOrder as Order) || (fallbackOrder as Order) || null);
       } else if (!isManager) {
         setCurrentOrder(null);
       }
@@ -251,6 +258,12 @@ export function useOrders() {
   };
 
   const confirmPayment = async (orderId: string, paymentMode: 'Cash' | 'Online') => {
+    const { data: orderData } = await supabase
+      .from('orders')
+      .select('table_number, hotel_id')
+      .eq('id', orderId)
+      .maybeSingle();
+
     const { error } = await supabase
       .from('orders')
       .update({
@@ -260,6 +273,14 @@ export function useOrders() {
       } as any)
       .eq('id', orderId);
     if (error) throw error;
+
+    if (orderData) {
+      await supabase
+        .from('table_requests' as any)
+        .delete()
+        .eq('table_number', orderData.table_number)
+        .eq('hotel_id', orderData.hotel_id);
+    }
   };
 
   const updatePaymentIntent = async (orderId: string, intent: 'Cash' | 'UPI') => {
@@ -341,6 +362,27 @@ export function useOrders() {
     };
   };
 
+  const toggleExtraItemComplete = async (orderId: string, itemIdx: number) => {
+    const { data: order } = await supabase
+      .from('orders')
+      .select('extra_items')
+      .eq('id', orderId)
+      .single();
+    
+    if (!order) return;
+    
+    const extras = [...(order.extra_items || [])];
+    if (extras[itemIdx]) {
+      extras[itemIdx].completed = !extras[itemIdx].completed;
+    }
+    
+    const { error } = await supabase
+      .from('orders')
+      .update({ extra_items: extras } as any)
+      .eq('id', orderId);
+    if (error) throw error;
+  };
+
   return {
     orders,
     currentOrder,
@@ -362,6 +404,7 @@ export function useOrders() {
     archiveTodayOrders,
     cleanupPreparedOlderThan24Hours,
     getTodayStats,
+    toggleExtraItemComplete,
     refreshOrders: fetchOrders,
   };
 }

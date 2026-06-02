@@ -177,6 +177,13 @@ export default function ServerDashboard() {
   const handleResetSeats = async (orderId: string, tableNumber: string, seats: string[]) => {
     try {
       await unlockSeatsByOrderId(orderId);
+      if (hotelId) {
+        await supabase
+          .from('table_requests' as any)
+          .delete()
+          .eq('table_number', tableNumber)
+          .eq('hotel_id', hotelId);
+      }
       toast.success(`Table ${tableNumber} – Seats ${seats.join(', ')} have been reset`);
     } catch (error) {
       toast.error('Failed to reset table');
@@ -463,12 +470,14 @@ function ServerOrderCard({
   tableRequests,
   onToggleRequestStatus
 }: ServerOrderCardProps) {
-  const orderedItems = order.ordered_items as Array<{
-    name: string;
-    nameKn: string;
-    quantity: number;
-    price: number;
-  }>;
+  const originalItems = ((order as any).base_items && (order as any).base_items.length > 0
+    ? (order as any).base_items
+    : order.ordered_items || []) as Array<{
+      name: string;
+      nameKn: string;
+      quantity: number;
+      price: number;
+    }>;
 
   const isPending = order.order_status === 'Pending';
   const isConfirmed = order.order_status === 'Confirmed';
@@ -533,13 +542,32 @@ function ServerOrderCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* 1. Ordered Items & Extra Items (Foods & Extras upside) */}
-        <div className="bg-muted/40 p-3 rounded-lg border space-y-2">
+        {/* 1. Customer Info (Name of the person in the table upside) */}
+        <div className="pb-3 flex items-start justify-between">
+          <div>
+            <p className="font-bold text-base flex items-center gap-1.5 text-foreground">
+              <User className="h-4 w-4 text-primary" />
+              {order.customer_name}
+            </p>
+            <p className="text-xs text-muted-foreground pl-5.5 font-medium">{order.phone_number}</p>
+          </div>
+          <div className="flex gap-1.5">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-success/5" onClick={handleCall}>
+              <Phone className="h-4 w-4 text-success" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-success/5" onClick={handleWhatsApp}>
+              <MessageCircle className="h-4 w-4 text-success" />
+            </Button>
+          </div>
+        </div>
+
+        {/* 2. Ordered Items & Extra Items (Foods & Extras upside) */}
+        <div className="bg-muted/40 p-3 rounded-lg border space-y-2 border-t pt-3">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             {language === 'kn' ? 'ಆರ್ಡರ್ ಮಾಡಿದ ಐಟಂಗಳು' : 'Ordered Items'}
           </p>
           <div className="space-y-1.5">
-            {orderedItems.map((item, index) => (
+            {originalItems.map((item, index) => (
               <div key={index} className="flex justify-between items-center text-sm font-semibold">
                 <div className="flex flex-col">
                   <span>{language === 'kn' ? item.nameKn : item.name} × {item.quantity}</span>
@@ -576,7 +604,7 @@ function ServerOrderCard({
           )}
         </div>
 
-        {/* 2. Table Service Requests (Extra things like spoons below the foods) */}
+        {/* 3. Table Service Requests (Extra things like spoons below the foods) */}
         {tableRequests && tableRequests.length > 0 && (
           <div className="space-y-2 border-t pt-3">
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
@@ -635,7 +663,7 @@ function ServerOrderCard({
           </div>
         )}
 
-        {/* 3. Server & Kitchen Acceptance Workflow Status */}
+        {/* 4. Server & Kitchen Acceptance Workflow Status */}
         {(acceptedByServerName || kitchenAccepted || (order as any).kitchen_prepared_at || (!acceptedByServerName && (isPending || isConfirmed))) && (
           <div className="space-y-2 border-t pt-3">
             {/* Server Acceptance Status */}
@@ -680,27 +708,6 @@ function ServerOrderCard({
             )}
           </div>
         )}
-
-        {/* 4. Customer Info */}
-        <div className="space-y-2 border-t pt-3">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="font-semibold text-sm flex items-center gap-1.5">
-                <User className="h-4 w-4 text-muted-foreground" />
-                {order.customer_name}
-              </p>
-              <p className="text-xs text-muted-foreground pl-5.5">{order.phone_number}</p>
-            </div>
-            <div className="flex gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCall}>
-                <Phone className="h-4 w-4 text-success" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleWhatsApp}>
-                <MessageCircle className="h-4 w-4 text-success" />
-              </Button>
-            </div>
-          </div>
-        </div>
 
         {/* 5. Wait Time countdown timer */}
         {isConfirmed && waitTimeMinutes && confirmedAt && (

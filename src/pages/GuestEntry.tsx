@@ -148,6 +148,15 @@ export default function GuestEntry() {
         .update({ order_stage: 'completed' } as any)
         .eq('id', activeOrder.id);
       if (error) throw error;
+
+      if (resolvedHotel) {
+        await supabase
+          .from('table_requests' as any)
+          .delete()
+          .eq('table_number', activeOrder.table_number)
+          .eq('hotel_id', resolvedHotel.id);
+      }
+
       toast.success('Previous order saved to history. Starting a new order.');
       navigate('/menu', { replace: true });
     } catch (err) {
