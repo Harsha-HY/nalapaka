@@ -152,7 +152,10 @@ export default function GuestEntry() {
       // Order History with the correct badge.
       const { error } = await supabase
         .from('orders')
-        .update({ order_stage: 'completed' } as any)
+        .update({ 
+          order_stage: 'completed',
+          payment_confirmed: true
+        } as any)
         .eq('id', activeOrder.id);
       if (error) throw error;
 

@@ -157,11 +157,12 @@ export default function ServerDashboard() {
   }, [orders, currentServer, fortyEightHoursAgo]);
 
   const pendingOrders = myTodayOrders.filter(o => 
-    o.order_status === 'Pending' || 
-    (o.order_status === 'Confirmed' && !o.payment_confirmed)
+    (o.order_status === 'Pending' || 
+     (o.order_status === 'Confirmed' && !o.payment_confirmed)) &&
+    o.order_stage !== 'completed'
   );
   
-  const completedOrders = myTodayOrders.filter(o => o.payment_confirmed);
+  const completedOrders = myTodayOrders.filter(o => o.payment_confirmed || o.order_stage === 'completed');
 
   if (!currentServer) {
     return (
@@ -177,6 +178,16 @@ export default function ServerDashboard() {
   const handleResetSeats = async (orderId: string, tableNumber: string, seats: string[]) => {
     try {
       await unlockSeatsByOrderId(orderId);
+      
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({ 
+          order_stage: 'completed',
+          payment_confirmed: true 
+        } as any)
+        .eq('id', orderId);
+      if (orderError) throw orderError;
+
       if (hotelId) {
         await supabase
           .from('table_requests' as any)

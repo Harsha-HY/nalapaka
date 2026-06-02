@@ -64,21 +64,26 @@ export default function KitchenDashboard() {
     });
   }, [orders, last24HoursAgo]);
 
-  // Active = not yet prepared (pending or confirmed, not payment_confirmed, not Cancelled)
+  // Active = not yet prepared (pending or confirmed, not payment_confirmed, not Cancelled, not completed)
   const activeOrders = recentOrders.filter(o => 
     !o.payment_confirmed && 
     o.order_status !== 'Cancelled' &&
+    o.order_stage !== 'completed' &&
     !(o as any).kitchen_prepared_at
   );
 
-  // Prepared = prepared but not yet paid
+  // Prepared = prepared but not yet paid and not completed
   const preparedOrders = recentOrders.filter(o => 
-    (o as any).kitchen_prepared_at && !o.payment_confirmed
+    (o as any).kitchen_prepared_at && 
+    !o.payment_confirmed &&
+    o.order_stage !== 'completed'
   );
 
   // History = prepared or paid orders in the last 24h
   const historyOrders = recentOrders.filter(o => 
-    o.payment_confirmed || (o as any).kitchen_prepared_at
+    o.payment_confirmed || 
+    (o as any).kitchen_prepared_at ||
+    o.order_stage === 'completed'
   );
 
   if (!currentKitchen) {
