@@ -48,12 +48,15 @@ export default function OrderStatusPage() {
     if (!currentOrder) return;
     const { data } = await supabase
       .from('table_requests' as any)
-      .select('request_type')
+      .select('request_type, created_at')
       .eq('hotel_id', currentOrder.hotel_id)
       .eq('table_number', currentOrder.table_number)
       .eq('status', 'Pending');
     if (data) {
-      setActiveRequests(data.map((r: any) => r.request_type));
+      const filtered = data
+        .filter((r: any) => new Date(r.created_at).getTime() >= new Date(currentOrder.created_at).getTime() - 60000)
+        .map((r: any) => r.request_type);
+      setActiveRequests(filtered);
     }
   };
 

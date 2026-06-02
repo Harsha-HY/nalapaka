@@ -326,7 +326,10 @@ export default function ServerDashboard() {
                       currentServer={currentServer}
                       onResetSeats={() => handleResetSeats(order.id, order.table_number, (order as any).seats || [])}
                       onAcceptOrder={() => handleAcceptOrder(order.id)}
-                      tableRequests={tableRequests.filter(req => req.table_number === order.table_number)}
+                      tableRequests={tableRequests.filter(req => 
+                        req.table_number === order.table_number &&
+                        new Date(req.created_at).getTime() >= new Date(order.created_at).getTime() - 60000
+                      )}
                       onToggleRequestStatus={handleToggleRequestStatus}
                     />
                   ))}
