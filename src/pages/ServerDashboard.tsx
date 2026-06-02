@@ -532,8 +532,8 @@ function ServerOrderCard({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Ordered Items */}
+      <CardContent className="space-y-4">
+        {/* 1. Ordered Items & Extra Items (Foods & Extras upside) */}
         <div className="bg-muted/40 p-3 rounded-lg border space-y-2">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             {language === 'kn' ? 'ಆರ್ಡರ್ ಮಾಡಿದ ಐಟಂಗಳು' : 'Ordered Items'}
@@ -555,7 +555,7 @@ function ServerOrderCard({
           
           {extraItems.length > 0 && (
             <div className="pt-2 border-t border-border mt-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-destructive font-bold">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-destructive">
                 {language === 'kn' ? 'ಹೆಚ್ಚುವರಿ ಐಟಂಗಳು' : 'Extra Items'}
               </p>
               <div className="space-y-1.5 mt-1">
@@ -576,66 +576,9 @@ function ServerOrderCard({
           )}
         </div>
 
-        {/* Server Acceptance Status */}
-        {acceptedByServerName && (
-          <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-success/20 text-success">
-            <UserCheck className="h-4 w-4" />
-            <span className="text-sm font-medium">
-              {isAcceptedByMe ? 'You accepted this order' : `Accepted by ${acceptedByServerName}`}
-            </span>
-          </div>
-        )}
-
-        {/* Kitchen Confirmation Status */}
-        {kitchenAccepted && (
-          <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-primary/20 text-primary">
-            <CheckCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">
-              Kitchen confirmed order – proceed service
-            </span>
-          </div>
-        )}
-
-        {/* Kitchen Prepared Status */}
-        {(order as any).kitchen_prepared_at && (
-          <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 animate-pulse">
-            <ChefHat className="h-4 w-4 animate-bounce" />
-            <span className="text-sm font-semibold">
-              {language === 'kn' ? 'ಆಹಾರ ಸಿದ್ಧವಾಗಿದೆ! ಬಡಿಸಲು ಸಿದ್ಧ' : 'Food is Prepared! Ready to Serve'}
-            </span>
-          </div>
-        )}
-
-        {/* Accept Order Button - show for pending or confirmed orders not yet accepted */}
-        {!acceptedByServerName && (isPending || isConfirmed) && (
-          <Button 
-            className="w-full bg-success hover:bg-success/90" 
-            onClick={onAcceptOrder}
-          >
-            <UserCheck className="h-4 w-4 mr-1" />
-            Accept Order
-          </Button>
-        )}
-
-        {/* Customer Info */}
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="font-medium">{order.customer_name}</p>
-            <p className="text-sm text-muted-foreground">{order.phone_number}</p>
-          </div>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCall}>
-              <Phone className="h-4 w-4 text-success" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleWhatsApp}>
-              <MessageCircle className="h-4 w-4 text-success" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Table Service Requests */}
+        {/* 2. Table Service Requests (Extra things like spoons below the foods) */}
         {tableRequests && tableRequests.length > 0 && (
-          <div className="space-y-2 border-t pt-3 mt-3">
+          <div className="space-y-2 border-t pt-3">
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
               <Bell className="h-3.5 w-3.5 text-destructive" />
               {language === 'kn' ? 'ಟೇಬಲ್ ಸೇವೆ ವಿನಂತಿಗಳು' : 'Service Requests'}
@@ -692,44 +635,115 @@ function ServerOrderCard({
           </div>
         )}
 
-        {/* Payment Intent Notification */}
-        {eatingFinished && paymentIntent && (
-          <div className={`py-2 px-3 rounded-md flex items-center gap-2 ${
-            paymentIntent === 'Cash' ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-blue-100 dark:bg-blue-900/30'
-          }`}>
-            <AlertCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">
-              Paying through {paymentIntent}
-            </span>
+        {/* 3. Server & Kitchen Acceptance Workflow Status */}
+        {(acceptedByServerName || kitchenAccepted || (order as any).kitchen_prepared_at || (!acceptedByServerName && (isPending || isConfirmed))) && (
+          <div className="space-y-2 border-t pt-3">
+            {/* Server Acceptance Status */}
+            {acceptedByServerName && (
+              <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-success/15 text-success">
+                <UserCheck className="h-4 w-4" />
+                <span className="text-sm font-semibold">
+                  {isAcceptedByMe ? 'You accepted this order' : `Accepted by ${acceptedByServerName}`}
+                </span>
+              </div>
+            )}
+
+            {/* Kitchen Confirmation Status */}
+            {kitchenAccepted && (
+              <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-primary/15 text-primary">
+                <CheckCircle className="h-4 w-4" />
+                <span className="text-sm font-semibold">
+                  Kitchen confirmed order – proceed service
+                </span>
+              </div>
+            )}
+
+            {/* Kitchen Prepared Status */}
+            {(order as any).kitchen_prepared_at && (
+              <div className="py-2 px-3 rounded-md flex items-center gap-2 bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 animate-pulse">
+                <ChefHat className="h-4 w-4 animate-bounce" />
+                <span className="text-sm font-bold">
+                  {language === 'kn' ? 'ಆಹಾರ ಸಿದ್ಧವಾಗಿದೆ! ಬಡಿಸಲು ಸಿದ್ಧ' : 'Food is Prepared! Ready to Serve'}
+                </span>
+              </div>
+            )}
+
+            {/* Accept Order Button */}
+            {!acceptedByServerName && (isPending || isConfirmed) && (
+              <Button 
+                className="w-full bg-success hover:bg-success/90" 
+                onClick={onAcceptOrder}
+              >
+                <UserCheck className="h-4 w-4 mr-1" />
+                Accept Order
+              </Button>
+            )}
           </div>
         )}
 
-        {/* QR Code for Online Payment */}
-        {eatingFinished && paymentIntent === 'UPI' && (
-          <QRCodePayment amount={order.total_amount} orderId={order.id} size={150} />
-        )}
+        {/* 4. Customer Info */}
+        <div className="space-y-2 border-t pt-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="font-semibold text-sm flex items-center gap-1.5">
+                <User className="h-4 w-4 text-muted-foreground" />
+                {order.customer_name}
+              </p>
+              <p className="text-xs text-muted-foreground pl-5.5">{order.phone_number}</p>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCall}>
+                <Phone className="h-4 w-4 text-success" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleWhatsApp}>
+                <MessageCircle className="h-4 w-4 text-success" />
+              </Button>
+            </div>
+          </div>
+        </div>
 
-        {/* Timer */}
+        {/* 5. Wait Time countdown timer */}
         {isConfirmed && waitTimeMinutes && confirmedAt && (
-          <div className="py-2 px-3 bg-primary/10 rounded-md flex items-center justify-between">
+          <div className="py-2 px-3 bg-primary/10 rounded-md flex items-center justify-between border-t pt-3">
             <span className="text-sm font-medium">Wait Time:</span>
             <CountdownTimer confirmedAt={confirmedAt} waitTimeMinutes={waitTimeMinutes} compact />
           </div>
         )}
 
+        {/* 6. Payment intents Cash/UPI & QR code */}
+        {((eatingFinished && paymentIntent) || (eatingFinished && paymentIntent === 'UPI')) && (
+          <div className="space-y-2 border-t pt-3">
+            {eatingFinished && paymentIntent && (
+              <div className={`py-2 px-3 rounded-md flex items-center gap-2 ${
+                paymentIntent === 'Cash' ? 'bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30' : 'bg-blue-100 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900/30'
+              }`}>
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm font-semibold">
+                  Paying through {paymentIntent}
+                </span>
+              </div>
+            )}
 
+            {eatingFinished && paymentIntent === 'UPI' && (
+              <div className="flex flex-col items-center justify-center p-3 bg-white rounded-lg border shadow-inner">
+                <p className="text-xs text-muted-foreground font-semibold mb-2">Scan QR to Pay</p>
+                <QRCodePayment amount={order.total_amount} orderId={order.id} size={150} />
+              </div>
+            )}
+          </div>
+        )}
 
         <Separator />
 
-        {/* Total */}
+        {/* 7. Total Amount */}
         <div className="flex justify-between font-bold text-lg">
           <span>Total</span>
           <span className="text-primary">₹{order.total_amount}</span>
         </div>
 
-        {/* Reset Button */}
+        {/* 8. Reset Table Button */}
         {orderType === 'dine-in' && isConfirmed && (
-          <Button variant="ghost" size="sm" className="w-full" onClick={onResetSeats}>
+          <Button variant="ghost" size="sm" className="w-full text-muted-foreground hover:text-destructive hover:bg-destructive/5" onClick={onResetSeats}>
             <RotateCcw className="h-4 w-4 mr-1" />
             Reset Table
           </Button>
