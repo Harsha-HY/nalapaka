@@ -129,9 +129,9 @@ export default function CheckoutPage() {
         toast.success(language === 'kn' ? 'ಐಟಂಗಳನ್ನು ಆರ್ಡರ್‌ಗೆ ಸೇರಿಸಲಾಗಿದೆ!' : 'Items added to your order!');
         clearCart();
         navigate('/order-status');
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error adding items:', error);
-        toast.error(language === 'kn' ? 'ಐಟಂಗಳನ್ನು ಸೇರಿಸಲು ವಿಫಲವಾಗಿದೆ' : 'Failed to add items');
+        toast.error(error.message || (language === 'kn' ? 'ಐಟಂಗಳನ್ನು ಸೇರಿಸಲು ವಿಫಲವಾಗಿದೆ' : 'Failed to add items'));
       } finally {
         setIsSubmitting(false);
       }
