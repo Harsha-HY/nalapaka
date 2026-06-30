@@ -22,7 +22,8 @@ import {
   Users,
   MessageSquare,
   BarChart3,
-  UserCheck
+  UserCheck,
+  Settings
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,7 +54,7 @@ import { MenuItemImageUploader } from '@/components/MenuItemImageUploader';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-type DashboardSection = 'orders' | 'menu' | 'specials' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics' | 'payments' | 'tableqr';
+type DashboardSection = 'orders' | 'menu' | 'specials' | 'history' | 'sales' | 'accounts' | 'reviews' | 'analytics' | 'payments' | 'tableqr' | 'settings';
 
 export default function ManagerDashboard() {
   const { language } = useLanguage();
@@ -75,6 +76,57 @@ export default function ManagerDashboard() {
   
   const [activeSection, setActiveSection] = useState<DashboardSection>('orders');
   const [showQR, setShowQR] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [settingsNewPassword, setSettingsNewPassword] = useState('');
+  const [settingsConfirmNewPassword, setSettingsConfirmNewPassword] = useState('');
+  const [settingsSubmitting, setSettingsSubmitting] = useState(false);
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (settingsNewPassword !== settingsConfirmNewPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    if (settingsNewPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setSettingsSubmitting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error('User email not found');
+
+      // Verify current password
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (verifyError) {
+        toast.error('Current password is incorrect');
+        setSettingsSubmitting(false);
+        return;
+      }
+
+      // Update password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: settingsNewPassword,
+      });
+
+      if (updateError) throw updateError;
+
+      toast.success('Password updated successfully!');
+      setCurrentPassword('');
+      setSettingsNewPassword('');
+      setSettingsConfirmNewPassword('');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update password');
+    } finally {
+      setSettingsSubmitting(false);
+    }
+  };
 
   // Redirect non-managers
   useEffect(() => {
@@ -399,6 +451,15 @@ export default function ManagerDashboard() {
               <QrCode className="h-4 w-4 mr-1" />
               Table QR
             </Button>
+            <Button 
+              variant={activeSection === 'settings' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveSection('settings')}
+              className={activeSection === 'settings' ? 'shadow-sm' : ''}
+            >
+              <Settings className="h-4 w-4 mr-1" />
+              Settings
+            </Button>
           </div>
 
           {/* Reset All Tables Button */}
@@ -595,6 +656,66 @@ export default function ManagerDashboard() {
           {activeSection === 'tableqr' && hotel?.slug && (
             <div>
               <TableQRSection hotelName={hotel.name} hotelSlug={hotel.slug} />
+            </div>
+          )}
+
+          {/* Settings Section */}
+          {activeSection === 'settings' && (
+            <div className="max-w-md">
+              <Card className="shadow-soft border-0">
+                <CardHeader>
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-primary" />
+                    Account Settings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <form onSubmit={handlePasswordChange} className="space-y-4">
+                    <h3 className="text-sm font-semibold">Change Password</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="current-password">Current Password</Label>
+                      <Input
+                        id="current-password"
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="h-10 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">New Password</Label>
+                      <Input
+                        id="new-password"
+                        type="password"
+                        value={settingsNewPassword}
+                        onChange={(e) => setSettingsNewPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        minLength={6}
+                        className="h-10 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+                      <Input
+                        id="confirm-new-password"
+                        type="password"
+                        value={settingsConfirmNewPassword}
+                        onChange={(e) => setSettingsConfirmNewPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        minLength={6}
+                        className="h-10 text-sm"
+                      />
+                    </div>
+                    <Button type="submit" disabled={settingsSubmitting} className="w-full">
+                      {settingsSubmitting ? 'Updating...' : 'Change Password'}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
             </div>
           )}
         </main>
