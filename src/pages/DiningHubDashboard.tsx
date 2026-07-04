@@ -49,6 +49,22 @@ interface HotelStats {
   monthlyRevenue: number;
 }
 
+const validatePasswordStrength = (password: string): string | null => {
+  if (password.length < 12) {
+    return 'Password must be at least 12 characters long';
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'Password must contain at least one uppercase letter (A-Z)';
+  }
+  if (!/[a-z]/.test(password)) {
+    return 'Password must contain at least one lowercase letter (a-z)';
+  }
+  if (!/[0-9]/.test(password)) {
+    return 'Password must contain at least one number (0-9)';
+  }
+  return null;
+};
+
 export default function DiningHubDashboard() {
   const { signOut, isSuperAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -197,8 +213,9 @@ export default function DiningHubDashboard() {
       toast.error('Fill all required fields');
       return;
     }
-    if (form.adminPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    const passwordError = validatePasswordStrength(form.adminPassword);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
     if (form.adminPassword !== form.confirmPassword) {
@@ -562,14 +579,14 @@ export default function DiningHubDashboard() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="adminPassword">Manager Password *</Label>
+              <Label htmlFor="adminPassword">Manager Password (min 12 chars, A-Z, a-z, 0-9) *</Label>
               <Input
                 id="adminPassword"
                 type="password"
                 value={form.adminPassword}
                 onChange={(e) => setForm({ ...form, adminPassword: e.target.value })}
-                placeholder="••••••••"
-                minLength={6}
+                placeholder="••••••••••••"
+                minLength={12}
               />
             </div>
             <div className="space-y-2">
@@ -579,8 +596,8 @@ export default function DiningHubDashboard() {
                 type="password"
                 value={form.confirmPassword}
                 onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                placeholder="••••••••"
-                minLength={6}
+                placeholder="••••••••••••"
+                minLength={12}
               />
             </div>
             <div className="space-y-2">

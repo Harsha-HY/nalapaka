@@ -13,6 +13,22 @@ import { useServers, Server } from '@/hooks/useServers';
 import { useKitchenStaff, KitchenStaff } from '@/hooks/useKitchenStaff';
 import { supabase } from '@/integrations/supabase/client';
 
+const validatePasswordStrength = (password: string): string | null => {
+  if (password.length < 12) {
+    return 'Password must be at least 12 characters long';
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'Password must contain at least one uppercase letter (A-Z)';
+  }
+  if (!/[a-z]/.test(password)) {
+    return 'Password must contain at least one lowercase letter (a-z)';
+  }
+  if (!/[0-9]/.test(password)) {
+    return 'Password must contain at least one number (0-9)';
+  }
+  return null;
+};
+
 const ALL_TABLES = Array.from({ length: 20 }, (_, i) => String(i + 1));
 
 export function AccountHandlingSection() {
@@ -46,6 +62,11 @@ export function AccountHandlingSection() {
   const handleAddServer = async () => {
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
+      return;
+    }
+    const passwordError = validatePasswordStrength(formData.password);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
     if (formData.assignedTables.length === 0) {
@@ -119,8 +140,9 @@ export function AccountHandlingSection() {
       return;
     }
     
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    const passwordError = validatePasswordStrength(newPassword);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
 
@@ -207,6 +229,11 @@ export function AccountHandlingSection() {
   const handleAddKitchen = async () => {
     if (kitchenFormData.password !== kitchenFormData.confirmPassword) {
       toast.error('Passwords do not match');
+      return;
+    }
+    const passwordError = validatePasswordStrength(kitchenFormData.password);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
     setIsSubmitting(true);
@@ -347,14 +374,14 @@ export function AccountHandlingSection() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password *</Label>
+              <Label htmlFor="password">Password (min 12 chars, A-Z, a-z, 0-9) *</Label>
               <Input
                 id="password"
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                placeholder="••••••••"
-                minLength={6}
+                placeholder="••••••••••••"
+                minLength={12}
               />
             </div>
             <div className="space-y-2">
@@ -364,8 +391,8 @@ export function AccountHandlingSection() {
                 type="password"
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                placeholder="••••••••"
-                minLength={6}
+                placeholder="••••••••••••"
+                minLength={12}
               />
             </div>
             <div className="space-y-2">
@@ -489,14 +516,14 @@ export function AccountHandlingSection() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="new-password">New Password *</Label>
+              <Label htmlFor="new-password">New Password (min 12 chars, A-Z, a-z, 0-9) *</Label>
               <Input
                 id="new-password"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="••••••••"
-                minLength={6}
+                placeholder="••••••••••••"
+                minLength={12}
               />
             </div>
             <div className="space-y-2">
@@ -506,8 +533,8 @@ export function AccountHandlingSection() {
                 type="password"
                 value={confirmNewPassword}
                 onChange={(e) => setConfirmNewPassword(e.target.value)}
-                placeholder="••••••••"
-                minLength={6}
+                placeholder="••••••••••••"
+                minLength={12}
               />
             </div>
           </div>
@@ -599,13 +626,13 @@ export function AccountHandlingSection() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Password *</Label>
+                <Label>Password (min 12 chars, A-Z, a-z, 0-9) *</Label>
                 <Input
                   type="password"
                   value={kitchenFormData.password}
                   onChange={(e) => setKitchenFormData(prev => ({ ...prev, password: e.target.value }))}
-                  placeholder="••••••••"
-                  minLength={6}
+                  placeholder="••••••••••••"
+                  minLength={12}
                 />
               </div>
               <div className="space-y-2">
@@ -614,8 +641,8 @@ export function AccountHandlingSection() {
                   type="password"
                   value={kitchenFormData.confirmPassword}
                   onChange={(e) => setKitchenFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                  placeholder="••••••••"
-                  minLength={6}
+                  placeholder="••••••••••••"
+                  minLength={12}
                 />
               </div>
               <div className="space-y-2">

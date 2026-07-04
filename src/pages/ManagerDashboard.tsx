@@ -82,14 +82,31 @@ export default function ManagerDashboard() {
   const [settingsConfirmNewPassword, setSettingsConfirmNewPassword] = useState('');
   const [settingsSubmitting, setSettingsSubmitting] = useState(false);
 
+  const validatePasswordStrength = (password: string): string | null => {
+    if (password.length < 12) {
+      return 'Password must be at least 12 characters long';
+    }
+    if (!/[A-Z]/.test(password)) {
+      return 'Password must contain at least one uppercase letter (A-Z)';
+    }
+    if (!/[a-z]/.test(password)) {
+      return 'Password must contain at least one lowercase letter (a-z)';
+    }
+    if (!/[0-9]/.test(password)) {
+      return 'Password must contain at least one number (0-9)';
+    }
+    return null;
+  };
+
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (settingsNewPassword !== settingsConfirmNewPassword) {
       toast.error('New passwords do not match');
       return;
     }
-    if (settingsNewPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    const passwordError = validatePasswordStrength(settingsNewPassword);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
 
@@ -685,15 +702,15 @@ export default function ManagerDashboard() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="new-password">New Password</Label>
+                      <Label htmlFor="new-password">New Password (min 12 chars, A-Z, a-z, 0-9)</Label>
                       <Input
                         id="new-password"
                         type="password"
                         value={settingsNewPassword}
                         onChange={(e) => setSettingsNewPassword(e.target.value)}
-                        placeholder="••••••••"
+                        placeholder="••••••••••••"
                         required
-                        minLength={6}
+                        minLength={12}
                         className="h-10 text-sm"
                       />
                     </div>
@@ -704,9 +721,9 @@ export default function ManagerDashboard() {
                         type="password"
                         value={settingsConfirmNewPassword}
                         onChange={(e) => setSettingsConfirmNewPassword(e.target.value)}
-                        placeholder="••••••••"
+                        placeholder="••••••••••••"
                         required
-                        minLength={6}
+                        minLength={12}
                         className="h-10 text-sm"
                       />
                     </div>
