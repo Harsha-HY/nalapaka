@@ -282,3 +282,95 @@
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
 }
+
+
+/* 3D & Calm Luxury Utilities */
+.perspective-800 {
+  perspective: 800px;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.perspective-1200 {
+  perspective: 1200px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+@keyframes calm-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-9px) rotate(0.4deg);
+  }
+}
+
+@keyframes calm-float-reverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(9px) rotate(-0.4deg);
+  }
+}
+
+@keyframes calm-float-slow {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.01);
+  }
+}
+
+@keyframes warm-ambient-glow {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.08);
+  }
+}
+
+.animate-calm-float {
+  animation: calm-float 5s ease-in-out infinite;
+}
+
+.animate-calm-float-reverse {
+  animation: calm-float-reverse 6s ease-in-out infinite;
+}
+
+.animate-calm-float-slow {
+  animation: calm-float-slow 8s ease-in-out infinite;
+}
+
+.animate-warm-glow {
+  animation: warm-ambient-glow 10s ease-in-out infinite;
+}
+
+.glass-stone {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(194, 94, 52, 0.12);
+  box-shadow: 0 16px 36px -12px rgba(60, 42, 28, 0.08);
+}
+
+.glass-stone-warm {
+  background: linear-gradient(135deg, rgba(255, 253, 250, 0.9) 0%, rgba(248, 243, 236, 0.78) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(212, 136, 59, 0.16);
+  box-shadow: 0 20px 48px -14px rgba(78, 54, 38, 0.09);
+}

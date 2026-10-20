@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
+import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import GuestEntry from "./pages/GuestEntry";
 import MenuPage from "./pages/MenuPage";
@@ -89,8 +90,10 @@ function SpinnerScreen() {
 
 const AppRoutes = () => (
   <Routes>
-    {/* Staff login */}
-    <Route path="/" element={<PublicRoute><AuthPage /></PublicRoute>} />
+    {/* Public Landing Page */}
+    <Route path="/" element={<PublicRoute><Index /></PublicRoute>} />
+    {/* Staff & Admin Login */}
+    <Route path="/auth" element={<PublicRoute><AuthPage /></PublicRoute>} />
 
     {/* Customer flow — fully public, no auth required */}
     <Route path="/guest" element={<GuestEntry />} />
