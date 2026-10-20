@@ -117,20 +117,20 @@ export const MenuSamplerSection: React.FC<MenuSamplerSectionProps> = ({ onOpenSc
         <div className="text-center max-w-2xl mx-auto mb-14 space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EADCCF] text-[#694F3B] text-xs font-semibold tracking-wide uppercase">
             <UtensilsCrossed className="w-3.5 h-3.5 text-[#B85D36]" />
-            <span>Digital Culinary Showcase</span>
+            <span>Visual Menu Gallery (Browse Only)</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-[#2A211B] font-serif">
-            {language === 'kn' ? 'ಸಾಂಪ್ರದಾಯಿಕ ಸ್ವಾದ, ಸುಲಭ ಆರ್ಡರ್' : 'Taste the Tradition. Experience the Craft.'}
+            {language === 'kn' ? 'ಸಾಂಪ್ರದಾಯಿಕ ಸ್ವಾದ — ಕೇವಲ ಟೇಬಲ್ QR ಸ್ಕ್ಯಾನ್ ಮೂಲಕ ಆರ್ಡರ್' : 'Taste the Tradition — Scan Table QR to Order'}
           </h2>
           <p className="text-sm sm:text-base text-[#65594D] leading-relaxed">
             {language === 'kn'
-              ? 'ಪ್ರತಿಯೊಂದು ಖಾದ್ಯವನ್ನು ಅತಿಥಿಗಳು ತಮ್ಮ ಟೇಬಲ್ QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿದ ನಂತರವೇ ಆರ್ಡರ್ ಮಾಡಬಹುದು. ಕೆಳಗೆ ನಮ್ಮ ಮಾದರಿ ಮೆನು ವೀಕ್ಷಿಸಿ.'
-              : 'Our digital menu is exclusively activated at your dining table. Browse our culinary specials below, then scan your table QR to place orders.'}
+              ? 'ಇಲ್ಲಿ ನೇರವಾಗಿ ಆರ್ಡರ್ ಮಾಡಲು ಸಾಧ್ಯವಿಲ್ಲ. ಪ್ರತಿಯೊಂದು ಖಾದ್ಯವನ್ನು ಸವಿಯಲು ನಿಮ್ಮ ಟೇಬಲ್ ಮೇಲಿರುವ QR ಸ್ಟಿಕ್ಕರ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ.'
+              : 'Direct checkout from this website is disabled. To order, diners must be seated at an active hotel table and scan the physical QR code.'}
           </p>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-100/70 border border-amber-200 text-amber-900 text-xs font-medium">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-100/70 border border-amber-200 text-amber-900 text-xs font-semibold">
             <QrCode className="w-3.5 h-3.5 text-[#B85D36]" />
-            <span>Orders are strictly table-activated via physical QR scan</span>
+            <span>No Direct Web Ordering • Must Scan Physical Table QR</span>
           </div>
         </div>
 

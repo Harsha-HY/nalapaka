@@ -407,15 +407,17 @@ export const InteractiveTableSimulator: React.FC = () => {
               </Button>
             </div>
 
-            {/* Launch Real Guest Table Experience */}
+            {/* Table QR Enforcement Notice */}
             <div className="pt-4 border-t border-[#E8DDCF]">
-              <Button
-                onClick={() => navigate('/guest')}
-                className="w-full bg-[#B85D36] hover:bg-[#9F4D2A] text-white font-semibold text-xs h-10 rounded-xl flex items-center justify-center gap-2 shadow-xs"
-              >
-                <span>Launch Actual Guest Ordering Screen</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Button>
+              <div className="p-3 rounded-xl bg-[#FAF6F0] border border-[#E5DACD] text-center space-y-1">
+                <span className="text-[11px] font-semibold text-[#6E5D4E] flex items-center justify-center gap-1.5">
+                  <QrCode className="w-3.5 h-3.5 text-[#B85D36]" />
+                  <span>Physical Table QR Disc Required for Ordering</span>
+                </span>
+                <p className="text-[10px] text-[#8C7A6B]">
+                  Diners can only place orders when seated at a physical table by scanning the QR disc with their phone camera.
+                </p>
+              </div>
             </div>
 
           </div>

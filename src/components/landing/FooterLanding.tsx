@@ -41,31 +41,41 @@ export const FooterLanding: React.FC = () => {
             </div>
           </div>
 
-          {/* Guest Experience Links */}
+          {/* Restaurant Suite Solutions */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-              Guest Experience
+              Restaurant Suite
             </h4>
             <ul className="space-y-2 text-xs text-[#A89887]">
               <li>
-                <Link to="/guest" className="hover:text-white transition-colors flex items-center gap-1">
-                  <span>Guest Table Entry</span>
-                  <ArrowUpRight className="w-3 h-3 text-[#B85D36]" />
-                </Link>
+                <a href="#collab" className="hover:text-amber-300 text-amber-400 font-semibold transition-colors flex items-center gap-1">
+                  <span>Collab with Nalapaka</span>
+                  <ArrowUpRight className="w-3 h-3 text-amber-400" />
+                </a>
               </li>
               <li>
-                <Link to="/menu" className="hover:text-white transition-colors">
-                  Digital Menu Page
-                </Link>
-              </li>
-              <li>
-                <Link to="/order-status" className="hover:text-white transition-colors">
-                  Live Order Tracker
-                </Link>
+                <a href="#experience" className="hover:text-white transition-colors">
+                  3D Operations Experience
+                </a>
               </li>
               <li>
                 <a href="#simulator" className="hover:text-white transition-colors">
-                  3D Table Simulator
+                  3D Table Floor Simulator
+                </a>
+              </li>
+              <li>
+                <a href="#menu-sampler" className="hover:text-white transition-colors">
+                  Visual Menu Gallery
+                </a>
+              </li>
+              <li>
+                <a href="#roi-calculator" className="hover:text-white transition-colors">
+                  ROI & Profit Calculator
+                </a>
+              </li>
+              <li>
+                <a href="#scanner-section" className="hover:text-white transition-colors">
+                  Table Camera Scanner
                 </a>
               </li>
             </ul>

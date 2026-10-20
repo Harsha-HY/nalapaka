@@ -7,6 +7,7 @@ import { MenuSamplerSection } from '@/components/landing/MenuSamplerSection';
 import { RoiCalculator } from '@/components/landing/RoiCalculator';
 import { TestimonialsSection } from '@/components/landing/TestimonialsSection';
 import { FaqSection } from '@/components/landing/FaqSection';
+import { CollabSection } from '@/components/landing/CollabSection';
 import { FooterLanding } from '@/components/landing/FooterLanding';
 import { StaffAuthModal } from '@/components/landing/StaffAuthModal';
 import { TableCameraScanner } from '@/components/landing/TableCameraScanner';
@@ -81,6 +82,9 @@ const Index: React.FC = () => {
 
         {/* Frequently Asked Questions */}
         <FaqSection />
+
+        {/* Dedicated Collab With Nalapaka & Inline Details Submission Form */}
+        <CollabSection />
       </main>
 
       {/* Earthy Footer */}

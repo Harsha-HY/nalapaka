@@ -125,13 +125,10 @@ export const PillarsSection: React.FC = () => {
                 </div>
 
                 <div className="pt-4">
-                  <Button
-                    onClick={() => navigate('/guest')}
-                    className="bg-[#B85D36] hover:bg-[#9F4D2A] text-white rounded-xl text-xs sm:text-sm h-11 px-6 font-medium shadow-xs"
-                  >
-                    Experience Guest QR Flow
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
+                  <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#FAF5EE] border border-[#E4D7C7] text-xs font-medium text-[#675647]">
+                    <QrCode className="w-4 h-4 text-[#B85D36]" />
+                    <span>Active table QR scan required to launch dining orders</span>
+                  </div>
                 </div>
               </div>
 

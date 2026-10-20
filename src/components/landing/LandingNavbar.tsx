@@ -47,9 +47,9 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({
   const navLinks = [
     { name: language === 'kn' ? 'ಅನುಭವ' : 'Experience', href: '#experience' },
     { name: language === 'kn' ? '3D ಸಿಮ್ಯುಲೇಟರ್' : '3D Simulator', href: '#simulator' },
-    { name: language === 'kn' ? 'ವ್ಯವಸ್ಥೆ' : 'Ecosystem', href: '#ecosystem' },
     { name: language === 'kn' ? 'ಮೆನು ಮಾದರಿ' : 'Menu Preview', href: '#menu-sampler' },
     { name: language === 'kn' ? 'ಲಾಭ ಕ್ಯಾಲ್ಕುಲೇಟರ್' : 'ROI Calculator', href: '#roi-calculator' },
+    { name: language === 'kn' ? 'ಸಹಯೋಗ (Collab)' : 'Collab with Us', href: '#collab' },
     { name: language === 'kn' ? 'ಪ್ರಶ್ನೋತ್ತರ' : 'FAQ', href: '#faq' },
   ];
 
