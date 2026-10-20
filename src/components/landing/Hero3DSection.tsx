@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   QrCode, 
@@ -14,7 +14,13 @@ import {
   Coffee,
   Camera,
   Check,
-  UserCheck
+  UserCheck,
+  Smartphone,
+  Tablet,
+  Users,
+  BarChart3,
+  TrendingUp,
+  Receipt
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card3D } from './Card3D';
@@ -26,6 +32,45 @@ interface Hero3DSectionProps {
   onOpenAuthModal?: () => void;
 }
 
+type PreviewPerspective = 'customer' | 'kitchen' | 'server' | 'manager';
+
+// Dynamic rotating food datasets
+const customerFoodCycles = [
+  {
+    table: 'Table 07',
+    hotel: 'Nalapaka Grand',
+    items: [
+      { name: 'Davangere Benne Dosa', desc: 'Crisp golden crepe, butter dollop, potato mash', price: 110, badge: "Chef's Special" },
+      { name: 'Kumbakonam Filter Coffee', desc: 'Frothed chicory-coffee decoction', price: 35, badge: 'Heritage Brew' },
+      { name: 'Maddur Vada (2 Pcs)', desc: 'Crispy onion semolina fritter', price: 65, badge: 'Popular' },
+    ],
+    subtotal: 210,
+    statusText: 'Kitchen preparing • Table active',
+  },
+  {
+    table: 'Table 04',
+    hotel: 'Nalapaka Heritage',
+    items: [
+      { name: 'Royal South Indian Thali', desc: 'Bisi Bele Bath, Kosambari, Poori, Payasa', price: 240, badge: 'Grand Feast' },
+      { name: 'Fresh Mango Lassi', desc: 'Chilled Alphonso yogurt smoothie', price: 60, badge: 'Cooler' },
+      { name: 'Pineapple Kesari Bath', desc: 'Ghee semolina pudding with saffron', price: 50, badge: 'Sweet' },
+    ],
+    subtotal: 350,
+    statusText: 'Dishes served • Diners enjoying',
+  },
+  {
+    table: 'Table 12',
+    hotel: 'Nalapaka Central',
+    items: [
+      { name: 'Mysore Ghee Roast Dosa', desc: 'Spicy red garlic chutney, potato masala', price: 125, badge: 'Bestseller' },
+      { name: 'Mallige Idli & Vada Combo', desc: 'Steamed rice cakes, medu vada, sambar', price: 85, badge: 'Morning Classic' },
+      { name: 'Badam Milk (Hot)', desc: 'Crushed almonds, saffron, cardamom', price: 45, badge: 'Warm Brew' },
+    ],
+    subtotal: 255,
+    statusText: 'Order dispatched • Server alerted',
+  },
+];
+
 export const Hero3DSection: React.FC<Hero3DSectionProps> = ({
   onOpenScanner,
   onOpenAuthModal,
@@ -33,13 +78,35 @@ export const Hero3DSection: React.FC<Hero3DSectionProps> = ({
   const navigate = useNavigate();
   const { language, setLanguage } = useLanguage();
   
-  // Interactive states inside the 3D phone
-  const [dosaCount, setDosaCount] = useState(1);
-  const [coffeeCount, setCoffeeCount] = useState(2);
-  const [ticketStatus, setTicketStatus] = useState<'pending' | 'cooking' | 'ready'>('cooking');
-  const [waterCalled, setWaterCalled] = useState(false);
+  // Perspective tab and auto-cycle state
+  const [perspective, setPerspective] = useState<PreviewPerspective>('customer');
+  const [foodCycleIdx, setFoodCycleIdx] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
-  const totalDemoBill = dosaCount * 110 + coffeeCount * 35;
+  // Auto-cycle through perspectives and food items every 4.5 seconds
+  useEffect(() => {
+    if (isPaused) return;
+    const timer = setInterval(() => {
+      setPerspective((prev) => {
+        if (prev === 'customer') return 'kitchen';
+        if (prev === 'kitchen') return 'server';
+        if (prev === 'server') return 'manager';
+        return 'customer';
+      });
+      setFoodCycleIdx((prev) => (prev + 1) % customerFoodCycles.length);
+    }, 4500);
+
+    return () => clearInterval(timer);
+  }, [isPaused]);
+
+  const currentFood = customerFoodCycles[foodCycleIdx];
+
+  const perspectiveTabs: { id: PreviewPerspective; label: string; icon: any }[] = [
+    { id: 'customer', label: '1. Customer Phone', icon: Smartphone },
+    { id: 'kitchen', label: '2. Kitchen KDS', icon: ChefHat },
+    { id: 'server', label: '3. Waiter Hub', icon: Users },
+    { id: 'manager', label: '4. Manager Intel', icon: BarChart3 },
+  ];
 
   return (
     <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 overflow-hidden bg-gradient-to-b from-[#FAF8F5] via-[#F6F1EA] to-[#FAF8F5]">
@@ -133,241 +200,270 @@ export const Hero3DSection: React.FC<Hero3DSectionProps> = ({
             </div>
           </div>
 
-          {/* Right Column: 3D Interactive Device Preview with Tilt & Parallax */}
-          <div className="lg:col-span-6 relative flex justify-center items-center py-6">
-            
-            {/* Background 3D Depth Card: Kitchen Display System (Tablet View) */}
-            <div className="hidden sm:block absolute -top-2 right-2 w-[340px] md:w-[390px] z-10 opacity-90 transition-transform duration-500 hover:opacity-100 hover:scale-[1.02]">
-              <Card3D intensity={8} depth={15}>
-                <div className="rounded-2xl bg-[#282420] text-[#EFEBE4] p-4 shadow-2xl border border-[#483E36] font-sans">
-                  <div className="flex items-center justify-between pb-3 border-b border-[#3D352E] mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-xs font-semibold tracking-wider uppercase text-[#B5A593]">
-                        Kitchen Display System (KDS)
-                      </span>
-                    </div>
-                    <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#38312B] text-[#D4C3B2] border border-[#4D4238]">
-                      Live Tickets
-                    </span>
-                  </div>
-
-                  {/* KDS Order Card */}
-                  <div className="rounded-xl bg-[#332D27] p-3 border border-[#4A3F35] space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5 font-bold text-white">
-                        <span className="px-1.5 py-0.5 rounded bg-[#B85D36] text-[10px] text-white">T-07</span>
-                        <span>Order #248</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-[11px] text-[#AFA191]">
-                        <Clock className="w-3 h-3 text-[#B85D36]" />
-                        <span>Just now</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1 text-xs text-[#DDD2C6] pt-1">
-                      <div className="flex justify-between items-center py-0.5 border-b border-[#403830]">
-                        <span>{dosaCount}x Benne Masala Dosa</span>
-                        <span className="text-[10px] text-emerald-400 font-medium">Extra Crispy</span>
-                      </div>
-                      <div className="flex justify-between items-center py-0.5">
-                        <span>{coffeeCount}x Kumbakonam Filter Coffee</span>
-                        <span className="text-[10px] text-[#B5A593]">Strong / Less Sugar</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setTicketStatus(ticketStatus === 'cooking' ? 'ready' : 'cooking');
-                        }}
-                        className={`w-full py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                          ticketStatus === 'cooking'
-                            ? 'bg-[#B85D36] hover:bg-[#A14F2B] text-white'
-                            : 'bg-emerald-700 text-white'
-                        }`}
-                      >
-                        {ticketStatus === 'cooking' ? '👨‍🍳 In Preparation (Tap when Ready)' : '✓ Order Ready for Server!'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </Card3D>
+          {/* Right Column: Dynamic Rotating Perspective Simulator with 3D Card Tilt */}
+          <div 
+            className="lg:col-span-6 relative flex flex-col items-center py-6"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+          >
+            {/* Top Interactive Perspective Selector Pills */}
+            <div className="flex flex-wrap items-center justify-center gap-1.5 p-1 rounded-2xl bg-[#EFE6DC]/90 backdrop-blur-md border border-[#DFCFBF] mb-4 z-30 shadow-xs">
+              {perspectiveTabs.map((tab) => {
+                const Icon = tab.icon;
+                const active = perspective === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setPerspective(tab.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                      active
+                        ? 'bg-[#B85D36] text-white shadow-xs scale-102'
+                        : 'text-[#615143] hover:text-[#2B231D] hover:bg-white/60'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Foreground 3D Depth Card: Guest Table Mobile Simulator */}
-            <div className="relative w-full max-w-[340px] sm:max-w-[350px] z-20 sm:mr-16">
-              <Card3D intensity={14} depth={30}>
-                <div className="rounded-[32px] p-2 bg-[#2D2621] shadow-2xl border-4 border-[#3D342C] ring-1 ring-black/10">
-                  {/* Phone Screen Container */}
-                  <div className="rounded-[26px] bg-[#FAF8F5] text-[#2B231D] overflow-hidden border border-[#E9DFD3] flex flex-col">
-                    
-                    {/* Phone Top Notch Bar */}
-                    <div className="bg-[#2D2621] text-[#A69788] px-5 py-2 flex items-center justify-between text-[11px] font-medium">
-                      <span>9:41</span>
-                      <div className="w-16 h-3.5 bg-[#1F1A16] rounded-full mx-auto" />
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px]">5G</span>
-                        <div className="w-4 h-2 border border-[#A69788] rounded-xs relative">
-                          <div className="h-full w-3/4 bg-[#A69788]" />
+            {/* Dynamic Perspective Device Screen */}
+            <div className="relative w-full max-w-[360px] z-20">
+              <Card3D intensity={12} depth={25}>
+                
+                {/* 1. CUSTOMER PERSPECTIVE */}
+                {perspective === 'customer' && (
+                  <div className="rounded-[32px] p-2 bg-[#2D2621] shadow-2xl border-4 border-[#3D342C] ring-1 ring-black/10 animate-in fade-in duration-300">
+                    <div className="rounded-[26px] bg-[#FAF8F5] text-[#2B231D] overflow-hidden border border-[#E9DFD3] flex flex-col">
+                      
+                      {/* Notch Bar */}
+                      <div className="bg-[#2D2621] text-[#A69788] px-5 py-2 flex items-center justify-between text-[11px] font-medium">
+                        <span>9:41</span>
+                        <div className="w-16 h-3.5 bg-[#1F1A16] rounded-full mx-auto" />
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px]">5G</span>
+                          <div className="w-4 h-2 border border-[#A69788] rounded-xs relative">
+                            <div className="h-full w-3/4 bg-[#A69788]" />
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Table Header inside Phone */}
-                    <div className="p-4 bg-gradient-to-r from-[#F6EDE2] to-[#FAF5EE] border-b border-[#E8DDD1]">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-[#B85D36] text-white flex items-center justify-center font-bold text-xs">
-                            07
+                      {/* Header */}
+                      <div className="p-3.5 bg-gradient-to-r from-[#F6EDE2] to-[#FAF5EE] border-b border-[#E8DDD1]">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-[#B85D36] text-white flex items-center justify-center font-bold text-xs">
+                              07
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-[#2B231D]">{currentFood.hotel}</h4>
+                              <p className="text-[10px] text-[#786D62]">{currentFood.table} • Table Scanned & Active</p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="text-xs font-bold text-[#2B231D]">Nalapaka Grand</h4>
-                            <p className="text-[10px] text-[#786D62]">Table 07 • Scanned & Active</p>
-                          </div>
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            Live Table
+                          </span>
                         </div>
 
-                        {/* Interactive In-Phone Language Switcher */}
+                        <div className="w-full py-1.5 px-3 rounded-lg text-[11px] font-medium bg-white text-[#524438] border border-[#DFCFBF] flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <BellRing className="w-3 h-3 text-[#B85D36]" />
+                            <span>Call Waiter / Water</span>
+                          </span>
+                          <span className="text-[10px] text-emerald-700 font-bold">Ready</span>
+                        </div>
+                      </div>
+
+                      {/* Dynamic Rotating Food Items */}
+                      <div className="p-3.5 space-y-2.5 flex-1 min-h-[220px]">
+                        {currentFood.items.map((item, idx) => (
+                          <div key={idx} className="rounded-xl p-2.5 bg-white border border-[#E9DFD3] shadow-2xs space-y-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-3 h-3 rounded border border-emerald-600 flex items-center justify-center p-0.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                                  </span>
+                                  <span className="text-[10px] font-semibold text-emerald-800 uppercase">
+                                    {item.badge}
+                                  </span>
+                                </div>
+                                <h5 className="text-xs font-bold text-[#2B231D] mt-0.5">{item.name}</h5>
+                                <p className="text-[10px] text-[#7A7066] line-clamp-1">{item.desc}</p>
+                              </div>
+                              <span className="text-xs font-bold text-[#B85D36]">₹{item.price}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Bottom Order Bar */}
+                      <div className="p-3 bg-white border-t border-[#E8DFD3] shadow-md">
+                        <div className="flex items-center justify-between text-xs font-bold mb-2 text-[#2B231D]">
+                          <span>Table Total ({currentFood.items.length} items):</span>
+                          <span className="text-[#B85D36] text-sm">₹{currentFood.subtotal}</span>
+                        </div>
                         <button
-                          onClick={() => setLanguage(language === 'en' ? 'kn' : 'en')}
-                          className="text-[10px] font-semibold px-2 py-1 rounded-md bg-white border border-[#D8C7B8] text-[#55463A] hover:bg-[#F2ECE3] shadow-2xs"
+                          onClick={onOpenScanner}
+                          className="w-full py-2 bg-[#B85D36] hover:bg-[#9F4D2A] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
                         >
-                          {language === 'en' ? 'ಕನ್ನಡ' : 'English'}
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>Scan Your Physical Table QR</span>
                         </button>
                       </div>
 
-                      {/* Guest interactive call button */}
-                      <button
-                        onClick={() => setWaterCalled(!waterCalled)}
-                        className={`w-full py-1.5 px-3 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors border ${
-                          waterCalled 
-                            ? 'bg-amber-100 text-amber-900 border-amber-300' 
-                            : 'bg-white text-[#524438] border-[#DFCFBF] hover:bg-[#F4ECE3]'
-                        }`}
-                      >
-                        <BellRing className={`w-3 h-3 ${waterCalled ? 'text-amber-700 animate-bounce' : 'text-[#8E7E70]'}`} />
-                        <span>{waterCalled ? 'Server Alerted for Table 07!' : 'Call Waiter / Request Water'}</span>
-                      </button>
                     </div>
-
-                    {/* Interactive Dish Card inside Phone */}
-                    <div className="p-3.5 space-y-3 flex-1">
-                      <div className="rounded-xl p-3 bg-white border border-[#E9DFD3] shadow-xs hover:border-[#D5C2B1] transition-all">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className="w-3.5 h-3.5 rounded border border-emerald-600 flex items-center justify-center p-0.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                              </span>
-                              <span className="text-[10px] font-semibold text-emerald-800 uppercase tracking-wide">
-                                {language === 'kn' ? 'ವಿಶೇಷ ತಿನಿಸು' : "Chef's Special"}
-                              </span>
-                            </div>
-                            <h5 className="text-xs font-bold text-[#2B231D]">
-                              {language === 'kn' ? 'ಬೆಣ್ಣೆ ಮಸಾಲ ದೋಸೆ' : 'Benne Masala Dosa'}
-                            </h5>
-                            <p className="text-[10px] text-[#7A7066] line-clamp-2 mt-0.5">
-                              {language === 'kn' 
-                                ? 'ತಾಜಾ ಬೆಣ್ಣೆ, ಮಸಾಲ ಆಲೂಗಡ್ಡೆ, ತೆಂಗಿನಕಾಯಿ ಚಟ್ನಿ ಮತ್ತು ಸಾಂಬಾರ್ ಜತೆ' 
-                                : 'Davangere style golden crisp crepe smeared with fresh butter, spiced potato mash.'}
-                            </p>
-                          </div>
-                          <span className="text-xs font-bold text-[#B85D36] whitespace-nowrap">₹110</span>
-                        </div>
-
-                        {/* Quantity Stepper */}
-                        <div className="mt-2.5 pt-2 border-t border-[#F1E9DF] flex items-center justify-between">
-                          <span className="text-[10px] text-[#7A6E63] font-medium">Quantity:</span>
-                          <div className="inline-flex items-center gap-2 bg-[#F6EFE6] px-2 py-0.5 rounded-full border border-[#E4D7CA]">
-                            <button
-                              onClick={() => setDosaCount(Math.max(1, dosaCount - 1))}
-                              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-[#554639] hover:bg-white"
-                            >
-                              -
-                            </button>
-                            <span className="text-xs font-bold text-[#2B231D]">{dosaCount}</span>
-                            <button
-                              onClick={() => setDosaCount(dosaCount + 1)}
-                              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-[#554639] hover:bg-white"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Second Dish: Filter Coffee */}
-                      <div className="rounded-xl p-3 bg-white border border-[#E9DFD3] shadow-xs">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Coffee className="w-3 h-3 text-[#8A5A36]" />
-                              <span className="text-[10px] font-semibold text-[#8A5A36]">Traditional Brew</span>
-                            </div>
-                            <h5 className="text-xs font-bold text-[#2B231D]">Kumbakonam Filter Coffee</h5>
-                            <p className="text-[10px] text-[#7A7066]">Frothed chicory-coffee decoction.</p>
-                          </div>
-                          <span className="text-xs font-bold text-[#B85D36]">₹35</span>
-                        </div>
-
-                        <div className="mt-2 pt-2 border-t border-[#F1E9DF] flex items-center justify-between">
-                          <span className="text-[10px] text-[#7A6E63]">Quantity:</span>
-                          <div className="inline-flex items-center gap-2 bg-[#F6EFE6] px-2 py-0.5 rounded-full border border-[#E4D7CA]">
-                            <button
-                              onClick={() => setCoffeeCount(Math.max(1, coffeeCount - 1))}
-                              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-[#554639] hover:bg-white"
-                            >
-                              -
-                            </button>
-                            <span className="text-xs font-bold text-[#2B231D]">{coffeeCount}</span>
-                            <button
-                              onClick={() => setCoffeeCount(coffeeCount + 1)}
-                              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-[#554639] hover:bg-white"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bottom Action Bar inside Phone */}
-                    <div className="p-3 bg-white border-t border-[#E8DFD3] shadow-md">
-                      <div className="flex items-center justify-between text-xs font-bold mb-2 text-[#2B231D]">
-                        <span>Table Subtotal:</span>
-                        <span className="text-[#B85D36] text-sm">₹{totalDemoBill}</span>
-                      </div>
-                      <button
-                        onClick={onOpenScanner}
-                        className="w-full py-2 bg-[#B85D36] hover:bg-[#9F4D2A] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
-                      >
-                        <Camera className="w-3.5 h-3.5" />
-                        <span>Scan Your Physical Table QR</span>
-                      </button>
-                    </div>
-
                   </div>
-                </div>
+                )}
+
+                {/* 2. KITCHEN KDS PERSPECTIVE */}
+                {perspective === 'kitchen' && (
+                  <div className="rounded-[32px] p-4 bg-[#211D1A] text-[#EDE7DF] shadow-2xl border-4 border-[#3B322A] ring-1 ring-black/10 animate-in fade-in duration-300 font-sans">
+                    <div className="flex items-center justify-between pb-3 border-b border-[#3E352C] mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-[#D5C5B3]">
+                          Kitchen KDS Queue
+                        </span>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                        Chimes Active
+                      </span>
+                    </div>
+
+                    <div className="rounded-2xl bg-[#2D2621] p-3.5 border border-[#44382F] space-y-3">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-white bg-[#B85D36] px-2 py-0.5 rounded">
+                          Table 09
+                        </span>
+                        <span className="text-amber-400 font-medium text-[11px] flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Cooking (2m 14s)
+                        </span>
+                      </div>
+                      <div className="text-xs space-y-1.5 text-[#DCD1C4] pt-1">
+                        <p className="flex justify-between border-b border-[#3D332A] pb-1">
+                          <span>2x Rava Masala Dosa</span>
+                          <span className="text-[10px] text-amber-300">Crispy</span>
+                        </p>
+                        <p className="flex justify-between border-b border-[#3D332A] pb-1">
+                          <span>1x Royal South Indian Thali</span>
+                          <span className="text-[10px] text-[#A69788]">Extra Poori</span>
+                        </p>
+                        <p className="flex justify-between">
+                          <span>2x Kumbakonam Filter Coffee</span>
+                          <span className="text-[10px] text-emerald-400">Piping Hot</span>
+                        </p>
+                      </div>
+                      <div className="pt-2">
+                        <div className="w-full py-2 bg-emerald-800 text-white text-xs font-bold rounded-xl text-center">
+                          ✓ Ticket Marked Ready for Server!
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 p-2.5 rounded-xl bg-[#29221C] border border-[#3E342B] flex items-center justify-between text-[11px] text-[#A69788]">
+                      <span>Next Order: #249 (Table 03)</span>
+                      <span className="text-amber-300">1m ago</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. SERVER / WAITER PERSPECTIVE */}
+                {perspective === 'server' && (
+                  <div className="rounded-[32px] p-4 bg-[#FFFFFF] text-[#2B231D] shadow-2xl border-4 border-[#3D342C] ring-1 ring-black/10 animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between pb-3 border-b border-[#F0E6D8] mb-3">
+                      <div>
+                        <h4 className="text-xs font-bold text-[#2A211B]">Captain Dispatch Console</h4>
+                        <p className="text-[10px] text-[#786D62]">Live Handheld Feed</p>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                        2 Live Alerts
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs space-y-1">
+                        <div className="flex items-center justify-between font-bold text-[#2A211B]">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping" />
+                            Table 04: Water & Chutney Refill
+                          </span>
+                          <span className="text-[10px] text-amber-800">18s ago</span>
+                        </div>
+                        <p className="text-[10px] text-[#786D62]">Assigned to: Captain Ramesh</p>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-blue-50/80 border border-blue-200 text-xs space-y-1">
+                        <div className="flex items-center justify-between font-bold text-[#2A211B]">
+                          <span className="flex items-center gap-1.5">
+                            <Receipt className="w-3.5 h-3.5 text-blue-700" />
+                            Table 07: Bill Request (UPI QR)
+                          </span>
+                          <span className="text-[10px] text-blue-800 font-bold">₹420</span>
+                        </div>
+                        <p className="text-[10px] text-[#786D62]">Diners requested digital receipt</p>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs">
+                        <div className="flex items-center justify-between font-bold text-emerald-900">
+                          <span>Kitchen: Table 12 Food Ready</span>
+                          <span className="text-[10px] text-emerald-700">Counter 1</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. MANAGER & OWNER PERSPECTIVE */}
+                {perspective === 'manager' && (
+                  <div className="rounded-[32px] p-4 bg-[#FFFFFF] text-[#2B231D] shadow-2xl border-4 border-[#3D342C] ring-1 ring-black/10 animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between pb-3 border-b border-[#F0E6D8] mb-3">
+                      <div>
+                        <h4 className="text-xs font-bold text-[#2A211B]">Hotel Command Center</h4>
+                        <p className="text-[10px] text-[#786D62]">Live Revenue & Seating</p>
+                      </div>
+                      <span className="text-[10px] font-bold text-[#B85D36] bg-[#F7EFE6] px-2 py-0.5 rounded border border-[#E8DDD1]">
+                        Live Shift
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5 mb-3">
+                      <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#EBE1D4]">
+                        <span className="text-[10px] text-[#7A6D61] font-semibold uppercase">Today's Sales</span>
+                        <div className="text-lg font-bold text-[#2B221B] mt-0.5">₹54,280</div>
+                        <span className="text-[10px] text-emerald-700 font-semibold">+22.4% vs last week</span>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#EBE1D4]">
+                        <span className="text-[10px] text-[#7A6D61] font-semibold uppercase">Active Tables</span>
+                        <div className="text-lg font-bold text-[#2B221B] mt-0.5">24 / 28</div>
+                        <span className="text-[10px] text-[#B85D36] font-semibold">85% Occupancy</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-[#F6EFE6] border border-[#E6D9CB] space-y-1.5 text-xs">
+                      <div className="flex justify-between text-[#554639]">
+                        <span>Bestseller Dish:</span>
+                        <span className="font-bold text-[#2A211A]">Benne Masala Dosa (148)</span>
+                      </div>
+                      <div className="flex justify-between text-[#554639]">
+                        <span>Avg Service Time:</span>
+                        <span className="font-bold text-emerald-800">12 Mins (Fast)</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               </Card3D>
             </div>
 
-            {/* Floating 3D Pills with Natural Calm Shadows */}
-            <div className="absolute -bottom-6 -left-4 sm:left-4 z-30 animate-calm-float">
-              <div className="glass-stone px-4 py-2.5 rounded-2xl flex items-center gap-3 text-xs text-[#3D332A] font-medium">
-                <div className="w-8 h-8 rounded-xl bg-[#EFE4D6] flex items-center justify-center text-[#B85D36]">
-                  <UtensilsCrossed className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-bold text-[#231B15]">Instant Dining Sync</div>
-                  <div className="text-[11px] text-[#73675C]">Phone ➔ Kitchen in 0.8s</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="hidden sm:flex absolute -bottom-4 right-4 z-30 animate-calm-float-reverse">
-              <div className="glass-stone px-3.5 py-2 rounded-2xl flex items-center gap-2.5 text-xs text-[#3D332A] font-medium">
-                <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-600" />
-                <span className="text-[11px]">Table session verified by QR</span>
+            {/* Floating Live Sync Pill */}
+            <div className="mt-4 animate-calm-float z-30">
+              <div className="glass-stone px-4 py-2 rounded-2xl flex items-center gap-2.5 text-xs text-[#3D332A] font-medium shadow-sm">
+                <span className="flex h-2 w-2 rounded-full bg-[#B85D36] animate-pulse" />
+                <span className="text-[11px] font-semibold">Auto-simulating live dining ecosystem (tap tabs above)</span>
               </div>
             </div>
 

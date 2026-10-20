@@ -11,11 +11,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card3D } from './Card3D';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useNavigate } from 'react-router-dom';
 
-export const RoiCalculator: React.FC = () => {
+interface RoiCalculatorProps {
+  onOpenOnboarding?: () => void;
+}
+
+export const RoiCalculator: React.FC<RoiCalculatorProps> = ({ onOpenOnboarding }) => {
   const { language } = useLanguage();
-  const navigate = useNavigate();
   const [dailyTables, setDailyTables] = useState<number>(45);
   const [avgTicket, setAvgTicket] = useState<number>(650);
 
@@ -183,7 +185,7 @@ export const RoiCalculator: React.FC = () => {
 
                 <div className="pt-2">
                   <Button
-                    onClick={() => navigate('/auth')}
+                    onClick={onOpenOnboarding}
                     className="w-full bg-[#B85D36] hover:bg-[#9F4D2A] text-white font-semibold text-xs sm:text-sm h-11 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all"
                   >
                     <span>Get Nalapaka DineOS for Your Restaurant</span>

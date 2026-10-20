@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { HotelQRCode } from '@/components/HotelQRCode';
+import { getOnboardingRequests, OnboardingRequest } from '@/components/landing/HotelOnboardingModal';
+import { Mail, Phone, MapPin } from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -74,7 +76,8 @@ export default function DiningHubDashboard() {
   const [showCreate, setShowCreate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [qrHotel, setQrHotel] = useState<Hotel | null>(null);
-  const [activeTab, setActiveTab] = useState<'hotels' | 'analytics'>('hotels');
+  const [activeTab, setActiveTab] = useState<'hotels' | 'analytics' | 'requests'>('hotels');
+  const [onboardingRequests, setOnboardingRequests] = useState<OnboardingRequest[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [form, setForm] = useState({
     hotelName: '',
@@ -151,7 +154,10 @@ export default function DiningHubDashboard() {
   };
 
   useEffect(() => {
-    if (isSuperAdmin) loadHotels();
+    if (isSuperAdmin) {
+      loadHotels();
+      setOnboardingRequests(getOnboardingRequests());
+    }
   }, [isSuperAdmin]);
 
   const platformTotals = useMemo(() => {
@@ -359,7 +365,7 @@ export default function DiningHubDashboard() {
           </Button>
         </div>
 
-        {activeTab === 'hotels' ? (
+        {activeTab === 'hotels' && (
           <>
             {/* Hotels list */}
             <div className="flex items-center justify-between">
@@ -436,7 +442,10 @@ export default function DiningHubDashboard() {
               </div>
             )}
           </>
-        ) : (
+        )}
+
+        {/* Analytics Tab */}
+        {activeTab === 'analytics' && (
           <div className="space-y-6">
             {/* Platform Analytics Panel */}
             <div className="grid md:grid-cols-2 gap-6">
@@ -537,6 +546,97 @@ export default function DiningHubDashboard() {
             </div>
           </div>
         )}
+        {/* Onboarding Requests Tab */}
+        {activeTab === 'requests' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Restaurant Partnership Inquiries</h2>
+                <p className="text-xs text-muted-foreground">Prospective restaurants requesting Nalapaka DineOS setup from landing page</p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setOnboardingRequests(getOnboardingRequests())}
+              >
+                Refresh
+              </Button>
+            </div>
+
+            {onboardingRequests.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground text-sm space-y-2">
+                  <Mail className="h-10 w-10 mx-auto text-muted-foreground/60" />
+                  <p>No pending onboarding requests at this time.</p>
+                  <p className="text-xs">When restaurant owners submit the "Get Nalapaka DineOS" form on the landing page, their inquiries will appear here.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {onboardingRequests.map((req) => (
+                  <Card key={req.id} className="border hover:border-primary/50 transition-colors shadow-xs">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-base font-bold text-foreground">{req.hotelName}</CardTitle>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <MapPin className="h-3 w-3 text-muted-foreground" />
+                            {req.city || 'Location not specified'}
+                          </p>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-700 border border-amber-300">
+                          {req.tablesCount} Tables
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-xs">
+                      <div className="p-2.5 rounded-lg bg-muted/40 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Owner:</span>
+                          <span className="font-semibold text-foreground">{req.ownerName}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Phone:</span>
+                          <a href={`tel:${req.phone}`} className="font-semibold text-primary hover:underline">{req.phone}</a>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Email:</span>
+                          <a href={`mailto:${req.email}`} className="font-semibold text-primary hover:underline">{req.email}</a>
+                        </div>
+                      </div>
+
+                      {req.notes && (
+                        <div className="p-2 rounded bg-background border text-[11px] text-muted-foreground italic">
+                          "{req.notes}"
+                        </div>
+                      )}
+
+                      <div className="pt-2 flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          className="w-full text-xs font-semibold h-8"
+                          onClick={() => {
+                            setForm({
+                              ...form,
+                              hotelName: req.hotelName,
+                              adminEmail: req.email,
+                              phone: req.phone,
+                              address: req.city,
+                            });
+                            setShowCreate(true);
+                          }}
+                        >
+                          Approve & Create Hotel
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
       </main>
 
       {/* Create Hotel Dialog */}

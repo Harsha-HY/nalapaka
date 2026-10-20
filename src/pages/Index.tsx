@@ -10,6 +10,7 @@ import { FaqSection } from '@/components/landing/FaqSection';
 import { FooterLanding } from '@/components/landing/FooterLanding';
 import { StaffAuthModal } from '@/components/landing/StaffAuthModal';
 import { TableCameraScanner } from '@/components/landing/TableCameraScanner';
+import { HotelOnboardingModal } from '@/components/landing/HotelOnboardingModal';
 import { Camera, QrCode, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -17,6 +18,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const Index: React.FC = () => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [scannerModalOpen, setScannerModalOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const { language } = useLanguage();
 
   return (
@@ -28,7 +30,7 @@ const Index: React.FC = () => {
       />
 
       <main>
-        {/* 3D Atmospheric Hero with Video & 3D Depth Particles */}
+        {/* 3D Atmospheric Hero with Video & 3D Depth Particles & Auto-rotating Role Views */}
         <div id="experience">
           <Hero3DSection 
             onOpenScanner={() => setScannerModalOpen(true)}
@@ -69,8 +71,10 @@ const Index: React.FC = () => {
           onOpenScanner={() => setScannerModalOpen(true)}
         />
 
-        {/* Restaurant Economics & ROI Calculator */}
-        <RoiCalculator />
+        {/* Restaurant Economics & ROI Calculator with Onboarding Request Trigger */}
+        <RoiCalculator 
+          onOpenOnboarding={() => setOnboardingOpen(true)}
+        />
 
         {/* Verified Restaurant Testimonials & Metrics */}
         <TestimonialsSection />
@@ -93,6 +97,12 @@ const Index: React.FC = () => {
         isOpen={scannerModalOpen} 
         onClose={() => setScannerModalOpen(false)} 
         inline={false} 
+      />
+
+      {/* Restaurant Onboarding Request Modal */}
+      <HotelOnboardingModal 
+        isOpen={onboardingOpen} 
+        onClose={() => setOnboardingOpen(false)} 
       />
     </div>
   );
