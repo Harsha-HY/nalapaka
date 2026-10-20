@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useHotelContext } from '@/hooks/useHotelContext';
+import { useHotelContext, ensureGuestHotelLoaded } from '@/hooks/useHotelContext';
 
 export interface MenuItem {
   id: string;
@@ -23,8 +23,12 @@ export function useMenuItems() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchMenuItems = useCallback(async () => {
-    // Wait until we know which hotel to load
-    if (!hotelId) {
+    let activeHotelId = hotelId;
+    if (!activeHotelId) {
+      const fallback = await ensureGuestHotelLoaded();
+      activeHotelId = fallback?.id ?? null;
+    }
+    if (!activeHotelId) {
       setMenuItems([]);
       setIsLoading(false);
       return;
@@ -35,7 +39,7 @@ export function useMenuItems() {
       const { data, error } = await supabase
         .from('menu_items')
         .select('*')
-        .eq('hotel_id', hotelId)
+        .eq('hotel_id', activeHotelId)
         .order('category', { ascending: true });
 
       if (error) throw error;

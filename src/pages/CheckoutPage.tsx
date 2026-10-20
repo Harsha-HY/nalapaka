@@ -34,7 +34,7 @@ export default function CheckoutPage() {
     isTableSet ? 'dine-in' : null
   );
   const [tableNumber, setTableNumber] = useState(isTableSet ? prefilledTable : '');
-  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<string[]>(['A']);
   const [seatError, setSeatError] = useState<string | null>(null);
   const [autoFilled, setAutoFilled] = useState(false);
 
@@ -103,12 +103,8 @@ export default function CheckoutPage() {
         return;
       }
       if (selectedOrderType === 'dine-in') {
-        if (!tableNumber.trim()) {
+        if (!tableNumber.trim() && !prefilledTable) {
           toast.error(language === 'kn' ? 'ಟೇಬಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ' : 'Please enter table number');
-          return;
-        }
-        if (selectedSeats.length === 0) {
-          toast.error(language === 'kn' ? 'ಆಸನಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ' : 'Please select at least one seat');
           return;
         }
       }
@@ -142,8 +138,8 @@ export default function CheckoutPage() {
           name: item.name, nameKn: item.nameKn, quantity: item.quantity, price: item.price,
         }));
 
-        const table = selectedOrderType === 'parcel' ? 'PARCEL' : tableNumber.trim();
-        const seats = selectedOrderType === 'parcel' ? [] : selectedSeats;
+        const table = selectedOrderType === 'parcel' ? 'PARCEL' : (tableNumber.trim() || prefilledTable || '1');
+        const seats = selectedOrderType === 'parcel' ? [] : (selectedSeats.length > 0 ? selectedSeats : ['A']);
 
         const orderData = {
           customer_name: customerName.trim(),

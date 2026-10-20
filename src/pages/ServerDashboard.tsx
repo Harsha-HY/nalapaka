@@ -138,7 +138,8 @@ export default function ServerDashboard() {
       const orderDate = new Date(o.created_at);
       orderDate.setHours(0, 0, 0, 0);
       const isToday = orderDate.getTime() === today.getTime();
-      const isMyTable = currentServer.assigned_tables.includes(o.table_number);
+      const hasSpecificTables = Array.isArray(currentServer.assigned_tables) && currentServer.assigned_tables.length > 0;
+      const isMyTable = !hasSpecificTables || currentServer.assigned_tables.includes(o.table_number);
       return isToday && isMyTable;
     });
   }, [orders, currentServer, today]);
@@ -150,7 +151,8 @@ export default function ServerDashboard() {
     return orders.filter(o => {
       const orderDate = new Date(o.created_at);
       const isWithin48Hours = orderDate >= fortyEightHoursAgo;
-      const isMyTable = currentServer.assigned_tables.includes(o.table_number);
+      const hasSpecificTables = Array.isArray(currentServer.assigned_tables) && currentServer.assigned_tables.length > 0;
+      const isMyTable = !hasSpecificTables || currentServer.assigned_tables.includes(o.table_number);
       const isPaid = o.payment_confirmed;
       return isWithin48Hours && isMyTable && isPaid;
     });

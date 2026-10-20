@@ -59,29 +59,32 @@ export default function GuestEntry() {
         let hotel: { id: string; name: string; slug: string } | null = null;
 
         if (hotelSlug) {
-          const { data, error } = await supabase
+          const { data } = await supabase
             .from('hotels')
             .select('id, name, slug, is_active')
             .eq('slug', hotelSlug)
             .maybeSingle();
 
-          if (cancelled) return;
-          if (error || !data || !data.is_active) {
-            setStatus('This restaurant is not available. Please scan a valid QR code.');
-            return;
+          if (data && data.is_active) {
+            hotel = { id: data.id, name: data.name, slug: data.slug };
           }
-          hotel = { id: data.id, name: data.name, slug: data.slug };
-        } else {
+        }
+
+        // If not found by slug or no slug, fall back to first active hotel
+        if (!hotel) {
           const { data: fallback } = await supabase
             .from('hotels')
-            .select('id, name, slug')
+            .select('id, name, slug, is_active')
             .eq('is_active', true)
             .order('created_at', { ascending: true })
             .limit(1)
             .maybeSingle();
-          if (cancelled) return;
-          if (fallback) hotel = { id: fallback.id, name: fallback.name, slug: fallback.slug };
+          if (fallback && fallback.is_active) {
+            hotel = { id: fallback.id, name: fallback.name, slug: fallback.slug };
+          }
         }
+
+        if (cancelled) return;
 
         if (!hotel) {
           setStatus('No restaurant found.');
@@ -113,24 +116,25 @@ export default function GuestEntry() {
         const active = (orderRows && orderRows[0]) as ActiveOrder | undefined;
 
         if (!active) {
+          // Fire non-blocking cleanup of stale table requests
           if (tableNumberParam && tableNumberParam.trim() && hotel) {
-            await supabase
+            supabase
               .from('table_requests' as any)
               .delete()
               .eq('table_number', tableNumberParam.trim())
-              .eq('hotel_id', hotel.id);
+              .eq('hotel_id', hotel.id)
+              .then(() => {})
+              .catch(() => {});
           }
           navigate('/menu', { replace: true });
           return;
         }
 
         // Always ask the customer: Stay on the existing order, or start a new one.
-        // (Previously Pending orders were silently resumed, which made customers
-        //  think the prompt wasn't working.)
         setActiveOrder(active);
       } catch (err) {
         console.error('Guest entry error:', err);
-        if (!cancelled) setStatus('Something went wrong. Please refresh and try again.');
+        if (!cancelled) navigate('/menu', { replace: true });
       }
     })();
 

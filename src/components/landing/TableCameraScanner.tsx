@@ -62,37 +62,34 @@ export const TableCameraScanner: React.FC<TableCameraScannerProps> = ({
       playScanBeep();
       setScannedUrl(codeData);
 
-      // Analyze codeData: could be full URL or relative path
       try {
-        if (codeData.startsWith('http://') || codeData.startsWith('https://')) {
-          const urlObj = new URL(codeData);
+        const trimmed = codeData.trim();
+        // If it's a full URL e.g. https://domain.com/guest/na/1
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+          const urlObj = new URL(trimmed);
           if (urlObj.pathname.startsWith('/guest')) {
-            setTimeout(() => {
-              navigate(urlObj.pathname);
-            }, 500);
+            navigate(urlObj.pathname);
             return;
           }
         }
         
-        if (codeData.startsWith('/guest')) {
-          setTimeout(() => {
-            navigate(codeData);
-          }, 500);
+        // If it's a path starting with /guest
+        if (trimmed.startsWith('/guest')) {
+          navigate(trimmed);
           return;
         }
 
         // If it's formatted as "hotelSlug/tableNumber"
-        if (codeData.includes('/')) {
-          setTimeout(() => {
-            navigate(`/guest/${codeData}`);
-          }, 500);
+        if (trimmed.includes('/')) {
+          navigate(`/guest/${trimmed}`);
           return;
         }
 
-        // Fallback default
-        navigate(`/guest/nalapaka/${codeData}`);
+        // It's a bare table number or code e.g. "1", "T-04", "Table 2"
+        const cleanTable = trimmed.replace(/[^a-zA-Z0-9_-]/g, '').trim();
+        navigate(`/guest/na/${cleanTable || '1'}`);
       } catch {
-        navigate('/guest');
+        navigate('/guest/na');
       }
     },
     [navigate, stopCamera]

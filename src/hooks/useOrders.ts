@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useHotelContext } from '@/hooks/useHotelContext';
+import { useHotelContext, ensureGuestHotelLoaded } from '@/hooks/useHotelContext';
 import { getDeviceId } from '@/hooks/useDevice';
 import { ensureAnonSession } from '@/hooks/useAnonAuth';
 import type { Database } from '@/integrations/supabase/types';
@@ -26,7 +26,8 @@ export type Order = OrderRow & {
 type OrderInsert = Database['public']['Tables']['orders']['Insert'];
 
 export function useOrders() {
-  const { user, isManager } = useAuth();
+  const { user, isManager, isServer, isKitchen, isSuperAdmin } = useAuth();
+  const isStaff = isManager || isServer || isKitchen || isSuperAdmin;
   const { hotelId } = useHotelContext();
   const [orders, setOrders] = useState<Order[]>([]);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
@@ -37,8 +38,8 @@ export function useOrders() {
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Customers (no role) need an anon session before they can read anything
-      if (!isManager) {
+      // Customers (no staff role) need an anon session before reading
+      if (!isStaff) {
         await ensureAnonSession();
       }
 
@@ -47,11 +48,13 @@ export function useOrders() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (user && isManager) {
-        // Manager sees all orders for their hotel (RLS handles scoping)
+      if (isStaff) {
+        // Staff sees all orders for their hotel (RLS also scopes)
+        if (!isSuperAdmin && hotelId) {
+          query = query.eq('hotel_id', hotelId);
+        }
       } else {
-        // Customer (anon or real) — RLS already restricts to auth.uid(),
-        // but we still cap the row count for perf.
+        // Customer view — cap row count
         query = query.limit(20);
       }
 
@@ -60,7 +63,7 @@ export function useOrders() {
       if (error) throw error;
       setOrders((data || []) as Order[]);
 
-      if (!isManager && data && data.length > 0) {
+      if (!isStaff && data && data.length > 0) {
         const activeOrder = data.find(
           (o) => o.order_stage !== 'completed' && !o.payment_confirmed
         );
@@ -74,7 +77,7 @@ export function useOrders() {
         }
         
         setCurrentOrder((activeOrder as Order) || (fallbackOrder as Order) || null);
-      } else if (!isManager) {
+      } else if (!isStaff) {
         setCurrentOrder(null);
       }
     } catch (error) {
@@ -82,14 +85,13 @@ export function useOrders() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, isManager]);
+  }, [user, isStaff, isSuperAdmin, hotelId]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
   // Realtime: instantly refresh whenever any order row changes.
-  // RLS still gates which rows each subscriber actually receives.
   useEffect(() => {
     const channel = supabase
       .channel('orders-live')
@@ -102,14 +104,14 @@ export function useOrders() {
       )
       .subscribe();
 
-    // Lightweight safety-net poll (every 20s) in case a realtime event is missed
-    const interval = setInterval(() => fetchOrders(), 20000);
+    // Fast 4s heartbeat poll for staff, 20s for customers
+    const interval = setInterval(() => fetchOrders(), isStaff ? 4000 : 20000);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [fetchOrders]);
+  }, [fetchOrders, isStaff]);
 
   const createOrder = async (
     orderData: Omit<OrderInsert, 'user_id'> & {
@@ -117,12 +119,23 @@ export function useOrders() {
       seats?: string[];
     }
   ) => {
-    if (!hotelId) throw new Error('No hotel selected. Please scan a QR code at your table.');
+    let resolvedHotelId = hotelId;
+    if (!resolvedHotelId) {
+      const fallback = await ensureGuestHotelLoaded();
+      resolvedHotelId = fallback?.id || null;
+    }
+    if (!resolvedHotelId) throw new Error('No hotel selected. Please scan a QR code at your table.');
 
-    // Make sure we have a Supabase session (anon for guests). Without it the
-    // RLS INSERT policy on orders will reject the row.
+    // Ensure anon session
     await ensureAnonSession();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+    let authUser = (await supabase.auth.getUser()).data.user;
+    if (!authUser) {
+      authUser = (await supabase.auth.getSession()).data.session?.user ?? null;
+    }
+    if (!authUser) {
+      const anonRes = await supabase.auth.signInAnonymously();
+      authUser = anonRes.data.user;
+    }
     if (!authUser) throw new Error('Could not establish a session. Please try again.');
 
     const baseItems = orderData.ordered_items || [];
@@ -132,10 +145,10 @@ export function useOrders() {
       .insert({
         ...orderData,
         user_id: authUser.id,
-        device_id: deviceId, // kept for analytics / cross-device tracking only
-        hotel_id: hotelId,
+        device_id: deviceId,
+        hotel_id: resolvedHotelId,
         order_type: orderData.order_type || 'dine-in',
-        seats: orderData.seats || [],
+        seats: orderData.seats && orderData.seats.length > 0 ? orderData.seats : ['A'],
         order_stage: 'cart',
         base_items: baseItems,
         extra_items: [],
