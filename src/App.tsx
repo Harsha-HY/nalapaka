@@ -36,32 +36,32 @@ const queryClient = new QueryClient({
 function ManagerRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading, role, roleLoading } = useAuth();
   if (isLoading || roleLoading) return <SpinnerScreen />;
-  if (!user) return <Navigate to="/" replace />;
-  if (role !== 'manager') return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (role !== 'manager') return <Navigate to="/auth" replace />;
   return <>{children}</>;
 }
 
 function ServerRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading, role, roleLoading } = useAuth();
   if (isLoading || roleLoading) return <SpinnerScreen />;
-  if (!user) return <Navigate to="/" replace />;
-  if (role !== 'server') return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (role !== 'server') return <Navigate to="/auth" replace />;
   return <>{children}</>;
 }
 
 function KitchenRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading, role, roleLoading } = useAuth();
   if (isLoading || roleLoading) return <SpinnerScreen />;
-  if (!user) return <Navigate to="/" replace />;
-  if (role !== 'kitchen') return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (role !== 'kitchen') return <Navigate to="/auth" replace />;
   return <>{children}</>;
 }
 
 function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading, role, roleLoading } = useAuth();
   if (isLoading || roleLoading) return <SpinnerScreen />;
-  if (!user) return <Navigate to="/" replace />;
-  if (role !== 'super_admin') return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (role !== 'super_admin') return <Navigate to="/auth" replace />;
   return <>{children}</>;
 }
 
@@ -91,7 +91,7 @@ function SpinnerScreen() {
 const AppRoutes = () => (
   <Routes>
     {/* Public Landing Page */}
-    <Route path="/" element={<PublicRoute><Index /></PublicRoute>} />
+    <Route path="/" element={<Index />} />
     {/* Staff & Admin Login */}
     <Route path="/auth" element={<PublicRoute><AuthPage /></PublicRoute>} />
 

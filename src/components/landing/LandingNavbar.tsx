@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UtensilsCrossed, Menu, X, ArrowUpRight, Sparkles, Shield, User, Globe } from 'lucide-react';
+import { UtensilsCrossed, Menu, X, ArrowUpRight, Sparkles, Shield, User, Globe, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const LandingNavbar: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { language, setLanguage } = useLanguage();
+  const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -17,6 +19,22 @@ export const LandingNavbar: React.FC = () => {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const getDashboardPath = () => {
+    if (role === 'super_admin') return '/dining-hub';
+    if (role === 'manager') return '/manager';
+    if (role === 'server') return '/server';
+    if (role === 'kitchen') return '/kitchen';
+    return '/menu';
+  };
+
+  const getRoleLabel = () => {
+    if (role === 'super_admin') return 'Super Admin';
+    if (role === 'manager') return 'Manager';
+    if (role === 'server') return 'Server';
+    if (role === 'kitchen') return 'Kitchen';
+    return 'Console';
+  };
 
   const navLinks = [
     { name: language === 'kn' ? 'ಅನುಭವ' : 'Experience', href: '#experience' },
@@ -31,7 +49,7 @@ export const LandingNavbar: React.FC = () => {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-[#FAF8F5]/85 backdrop-blur-md shadow-sm border-b border-[#E8DFD5]/80 py-3'
+          ? 'bg-[#FAF8F5]/90 backdrop-blur-md shadow-sm border-b border-[#E8DFD5]/80 py-3'
           : 'bg-transparent py-5'
       }`}
     >
@@ -81,16 +99,36 @@ export const LandingNavbar: React.FC = () => {
               <span>{language === 'en' ? 'ಕನ್ನಡ' : 'English'}</span>
             </button>
 
-            {/* Staff / Manager Sign In */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/auth')}
-              className="border-[#D8CAC0] text-[#473E35] hover:bg-[#F2ECE4] hover:text-[#2E2721] font-medium h-9 text-xs gap-1.5"
-            >
-              <User className="w-3.5 h-3.5 text-[#887869]" />
-              <span>{language === 'kn' ? 'ಸಿಬ್ಬಂದಿ ಲಾಗಿನ್' : 'Staff Sign In'}</span>
-            </Button>
+            {/* If logged in staff: Show direct dashboard button */}
+            {user && role && role !== 'customer' ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => navigate(getDashboardPath())}
+                  className="bg-[#2D2621] hover:bg-[#40362F] text-white font-medium h-9 text-xs gap-1.5 shadow-xs"
+                >
+                  <Shield className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{getRoleLabel()} Dashboard</span>
+                </Button>
+                <button
+                  onClick={() => signOut()}
+                  className="p-2 text-[#7C6E61] hover:text-[#2A211B] rounded-lg hover:bg-[#EFE7DC] transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/auth')}
+                className="border-[#D8CAC0] text-[#473E35] hover:bg-[#F2ECE4] hover:text-[#2E2721] font-medium h-9 text-xs gap-1.5"
+              >
+                <User className="w-3.5 h-3.5 text-[#887869]" />
+                <span>{language === 'kn' ? 'ಸಿಬ್ಬಂದಿ ಲಾಗಿನ್' : 'Staff Sign In'}</span>
+              </Button>
+            )}
 
             {/* Live Table Demo */}
             <Button
@@ -144,17 +182,31 @@ export const LandingNavbar: React.FC = () => {
                 </a>
               ))}
               <div className="pt-3 border-t border-[#E8DFD5] flex flex-col gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    navigate('/auth');
-                  }}
-                  className="w-full justify-center border-[#D8CAC0] text-[#473E35] h-11"
-                >
-                  <User className="w-4 h-4 mr-2" />
-                  {language === 'kn' ? 'ಸಿಬ್ಬಂದಿ ಮತ್ತು ಮ್ಯಾನೇಜರ್ ಲಾಗಿನ್' : 'Staff & Manager Sign In'}
-                </Button>
+                {user && role && role !== 'customer' ? (
+                  <Button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      navigate(getDashboardPath());
+                    }}
+                    className="w-full justify-center bg-[#2D2621] text-white h-11"
+                  >
+                    <Shield className="w-4 h-4 mr-2 text-amber-400" />
+                    Open {getRoleLabel()} Dashboard
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      navigate('/auth');
+                    }}
+                    className="w-full justify-center border-[#D8CAC0] text-[#473E35] h-11"
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    {language === 'kn' ? 'ಸಿಬ್ಬಂದಿ ಮತ್ತು ಮ್ಯಾನೇಜರ್ ಲಾಗಿನ್' : 'Staff & Manager Sign In'}
+                  </Button>
+                )}
+
                 <Button
                   onClick={() => {
                     setMobileMenuOpen(false);
