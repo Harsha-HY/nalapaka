@@ -12,19 +12,28 @@ import {
   ShieldCheck, 
   Flame, 
   Coffee,
-  Smartphone,
-  Tablet,
-  Check
+  Camera,
+  Check,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card3D } from './Card3D';
+import { HeroAtmosphericBackground } from './HeroAtmosphericBackground';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-export const Hero3DSection: React.FC = () => {
+interface Hero3DSectionProps {
+  onOpenScanner?: () => void;
+  onOpenAuthModal?: () => void;
+}
+
+export const Hero3DSection: React.FC<Hero3DSectionProps> = ({
+  onOpenScanner,
+  onOpenAuthModal,
+}) => {
   const navigate = useNavigate();
   const { language, setLanguage } = useLanguage();
   
-  // Interactive demo states inside the 3D phone
+  // Interactive states inside the 3D phone
   const [dosaCount, setDosaCount] = useState(1);
   const [coffeeCount, setCoffeeCount] = useState(2);
   const [ticketStatus, setTicketStatus] = useState<'pending' | 'cooking' | 'ready'>('cooking');
@@ -34,31 +43,20 @@ export const Hero3DSection: React.FC = () => {
 
   return (
     <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 overflow-hidden bg-gradient-to-b from-[#FAF8F5] via-[#F6F1EA] to-[#FAF8F5]">
-      {/* Calm ambient background gradients - NO NEON, pure warm atmospheric glows */}
-      <div 
-        aria-hidden="true" 
-        className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[900px] h-[550px] bg-gradient-to-tr from-[#EEDDC8]/50 via-[#F3E5D4]/40 to-transparent rounded-full blur-3xl -z-10 animate-warm-glow"
-      />
-      <div 
-        aria-hidden="true" 
-        className="pointer-events-none absolute top-1/3 -left-32 w-[420px] h-[420px] bg-[#E9D9C3]/35 rounded-full blur-3xl -z-10"
-      />
-      <div 
-        aria-hidden="true" 
-        className="pointer-events-none absolute top-1/2 -right-32 w-[450px] h-[450px] bg-[#F1E0CB]/40 rounded-full blur-3xl -z-10"
-      />
+      {/* 3D Atmospheric Video & Ambient Particle Background */}
+      <HeroAtmosphericBackground />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           
           {/* Left Column: Headline, Value Proposition, Action CTAs */}
           <div className="lg:col-span-6 space-y-6 text-center lg:text-left z-10">
             {/* Organic Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EFE6DC] border border-[#DFCFC0] text-[#71543D] text-xs font-medium tracking-wide shadow-xs animate-fade-in">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EFE6DC]/90 backdrop-blur-md border border-[#DFCFC0] text-[#71543D] text-xs font-medium tracking-wide shadow-xs animate-fade-in">
               <span className="flex h-2 w-2 rounded-full bg-[#B85D36] animate-pulse" />
-              <span>{language === 'kn' ? 'ಆಧುನಿಕ ರೆಸ್ಟೋರೆಂಟ್ ವ್ಯವಸ್ಥೆ' : 'Next-Gen Restaurant Hospitality'}</span>
+              <span>{language === 'kn' ? 'ಆಧುನಿಕ ರೆಸ್ಟೋರೆಂಟ್ ವ್ಯವಸ್ಥೆ' : 'Artisanal Dining Intelligence'}</span>
               <span className="text-[#A38973]">•</span>
-              <span className="text-[#5E4734] font-semibold">{language === 'kn' ? 'ಶೂನ್ಯ ಆಪ್ ಡೌನ್‌ಲೋಡ್' : 'Zero App Download'}</span>
+              <span className="text-[#5E4734] font-semibold">{language === 'kn' ? 'ಟೇಬಲ್ QR ಸ್ಕ್ಯಾನ್ ಮಾತ್ರ' : 'Table QR Scan to Dine'}</span>
             </div>
 
             {/* Main Headline */}
@@ -79,32 +77,31 @@ export const Hero3DSection: React.FC = () => {
             {/* Subtitle */}
             <p className="text-base sm:text-lg text-[#5F554C] leading-relaxed max-w-xl mx-auto lg:mx-0">
               {language === 'kn'
-                ? 'ಗ್ರಾಹಕರು ತಮ್ಮ ಟೇಬಲ್‌ನಿಂದಲೇ QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಆದೇಶಿಸಬಹುದು. ಅಡುಗೆಮನೆಗೆ ನೇರ ತಲುಪುವಿಕೆ, ವೇಗದ ಸೇವೆ, ಮತ್ತು ಮಾಲೀಕರಿಗೆ ಪೂರ್ಣ ನಿಯಂತ್ರಣ.'
-                : 'Delight guests with seamless QR table ordering, bilingual menus, and live kitchen synchronization. No waiting for physical menus, no order mix-ups, zero food aggregator commissions.'}
+                ? 'ಗ್ರಾಹಕರು ತಮ್ಮ ಟೇಬಲ್ ಮೇಲಿರುವ QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿದ ತಕ್ಷಣ ಮೆನು ಲಭ್ಯ. ಅಡುಗೆಮನೆಗೆ ನೇರ ತಲುಪುವಿಕೆ, ವೇಗದ ಸೇವೆ, ಮತ್ತು ಮಾಲೀಕರಿಗೆ ಪೂರ್ಣ ನಿಯಂತ್ರಣ.'
+                : 'Frictionless table-side QR ordering, bilingual Kannada & English menus, and live kitchen synchronization. Zero waiting for paper menus, zero lost orders, and ₹0 commission cuts.'}
             </p>
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+              {/* Camera Scanner Trigger */}
               <Button
                 size="lg"
-                onClick={() => {
-                  const el = document.getElementById('simulator');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="w-full sm:w-auto h-12 px-7 text-sm font-semibold bg-[#B85D36] hover:bg-[#9F4D2A] text-white shadow-md hover:shadow-lg transition-all rounded-xl gap-2"
+                onClick={onOpenScanner}
+                className="w-full sm:w-auto h-12 px-7 text-sm font-semibold bg-[#B85D36] hover:bg-[#9F4D2A] text-white shadow-md hover:shadow-lg transition-all rounded-xl gap-2.5"
               >
-                <span>{language === 'kn' ? 'ಲೈವ್ 3D ಟೇಬಲ್ ಸಿಮ್ಯುಲೇಟರ್' : 'Try 3D Table Simulator'}</span>
-                <ArrowRight className="w-4 h-4" />
+                <Camera className="w-4 h-4" />
+                <span>{language === 'kn' ? 'ಕ್ಯಾಮೆರಾದಿಂದ ಟೇಬಲ್ QR ಸ್ಕ್ಯಾನ್ ಮಾಡಿ' : 'Scan Table QR with Camera'}</span>
               </Button>
 
+              {/* Staff Sign In Modal Trigger */}
               <Button
                 size="lg"
                 variant="outline"
-                onClick={() => navigate('/auth')}
-                className="w-full sm:w-auto h-12 px-6 text-sm font-medium border-[#D6C7BC] bg-[#FDFBF7] text-[#473D34] hover:bg-[#F2ECE3] hover:text-[#28211A] transition-all rounded-xl gap-2"
+                onClick={onOpenAuthModal}
+                className="w-full sm:w-auto h-12 px-6 text-sm font-medium border-[#D6C7BC] bg-[#FDFBF7]/90 backdrop-blur-md text-[#473D34] hover:bg-[#F2ECE3] hover:text-[#28211A] transition-all rounded-xl gap-2"
               >
                 <ChefHat className="w-4 h-4 text-[#8C7A6B]" />
-                <span>{language === 'kn' ? 'ಸಿಬ್ಬಂದಿ ಕನ್ಸೋಲ್ ಲಾಗಿನ್' : 'Staff & Manager Console'}</span>
+                <span>{language === 'kn' ? 'ಸಿಬ್ಬಂದಿ ಮತ್ತು ಮ್ಯಾನೇಜರ್ ಲಾಗಿನ್' : 'Staff & Manager Sign In'}</span>
               </Button>
             </div>
 
@@ -113,17 +110,17 @@ export const Hero3DSection: React.FC = () => {
               <div className="space-y-1">
                 <div className="flex items-center gap-1.5 text-[#2B231D] font-bold text-sm">
                   <CheckCircle2 className="w-4 h-4 text-[#B85D36]" />
-                  <span>15 Mins</span>
+                  <span>Camera Scan</span>
                 </div>
-                <p className="text-xs text-[#786E64]">{language === 'kn' ? 'ತ್ವರಿತ ಸ್ಥಾಪನೆ' : 'Instant Setup'}</p>
+                <p className="text-xs text-[#786E64]">{language === 'kn' ? 'ನೇರ ಲಿಂಕ್' : 'Instant Table Link'}</p>
               </div>
 
               <div className="space-y-1">
                 <div className="flex items-center gap-1.5 text-[#2B231D] font-bold text-sm">
                   <CheckCircle2 className="w-4 h-4 text-[#B85D36]" />
-                  <span>0% Cuts</span>
+                  <span>Dine-In Only</span>
                 </div>
-                <p className="text-xs text-[#786E64]">{language === 'kn' ? 'ನೇರ ಉಳಿತಾಯ' : 'Zero Commission'}</p>
+                <p className="text-xs text-[#786E64]">{language === 'kn' ? 'ಟೇಬಲ್ ರಕ್ಷಣೆ' : 'Zero Fake Orders'}</p>
               </div>
 
               <div className="space-y-1">
@@ -131,7 +128,7 @@ export const Hero3DSection: React.FC = () => {
                   <CheckCircle2 className="w-4 h-4 text-[#B85D36]" />
                   <span>KN + EN</span>
                 </div>
-                <p className="text-xs text-[#786E64]">{language === 'kn' ? 'ದ್ವಿಭಾಷಾ ಬೆಂಬಲ' : 'Bilingual Ready'}</p>
+                <p className="text-xs text-[#786E64]">{language === 'kn' ? 'ದ್ವಿಭಾಷಾ ಬೆಂಬಲ' : 'Bilingual Native'}</p>
               </div>
             </div>
           </div>
@@ -226,7 +223,7 @@ export const Hero3DSection: React.FC = () => {
                           </div>
                           <div>
                             <h4 className="text-xs font-bold text-[#2B231D]">Nalapaka Grand</h4>
-                            <p className="text-[10px] text-[#786D62]">Table 07 • Dining Room</p>
+                            <p className="text-[10px] text-[#786D62]">Table 07 • Scanned & Active</p>
                           </div>
                         </div>
 
@@ -284,14 +281,14 @@ export const Hero3DSection: React.FC = () => {
                           <div className="inline-flex items-center gap-2 bg-[#F6EFE6] px-2 py-0.5 rounded-full border border-[#E4D7CA]">
                             <button
                               onClick={() => setDosaCount(Math.max(1, dosaCount - 1))}
-                              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-[#55463A] hover:bg-white"
+                              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-[#554639] hover:bg-white"
                             >
                               -
                             </button>
                             <span className="text-xs font-bold text-[#2B231D]">{dosaCount}</span>
                             <button
                               onClick={() => setDosaCount(dosaCount + 1)}
-                              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-[#55463A] hover:bg-white"
+                              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-[#554639] hover:bg-white"
                             >
                               +
                             </button>
@@ -318,14 +315,14 @@ export const Hero3DSection: React.FC = () => {
                           <div className="inline-flex items-center gap-2 bg-[#F6EFE6] px-2 py-0.5 rounded-full border border-[#E4D7CA]">
                             <button
                               onClick={() => setCoffeeCount(Math.max(1, coffeeCount - 1))}
-                              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-[#55463A] hover:bg-white"
+                              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-[#554639] hover:bg-white"
                             >
                               -
                             </button>
                             <span className="text-xs font-bold text-[#2B231D]">{coffeeCount}</span>
                             <button
                               onClick={() => setCoffeeCount(coffeeCount + 1)}
-                              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-[#55463A] hover:bg-white"
+                              className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-[#554639] hover:bg-white"
                             >
                               +
                             </button>
@@ -334,18 +331,18 @@ export const Hero3DSection: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Bottom Cart Bar inside Phone */}
+                    {/* Bottom Action Bar inside Phone */}
                     <div className="p-3 bg-white border-t border-[#E8DFD3] shadow-md">
                       <div className="flex items-center justify-between text-xs font-bold mb-2 text-[#2B231D]">
                         <span>Table Subtotal:</span>
                         <span className="text-[#B85D36] text-sm">₹{totalDemoBill}</span>
                       </div>
                       <button
-                        onClick={() => navigate('/guest')}
+                        onClick={onOpenScanner}
                         className="w-full py-2 bg-[#B85D36] hover:bg-[#9F4D2A] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
                       >
-                        <QrCode className="w-3.5 h-3.5" />
-                        <span>Place Order from Table</span>
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>Scan Your Physical Table QR</span>
                       </button>
                     </div>
 
@@ -370,7 +367,7 @@ export const Hero3DSection: React.FC = () => {
             <div className="hidden sm:flex absolute -bottom-4 right-4 z-30 animate-calm-float-reverse">
               <div className="glass-stone px-3.5 py-2 rounded-2xl flex items-center gap-2.5 text-xs text-[#3D332A] font-medium">
                 <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-600" />
-                <span className="text-[11px]">Table 07 session secured</span>
+                <span className="text-[11px]">Table session verified by QR</span>
               </div>
             </div>
 

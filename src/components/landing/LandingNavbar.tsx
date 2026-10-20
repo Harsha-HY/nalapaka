@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UtensilsCrossed, Menu, X, ArrowUpRight, Sparkles, Shield, User, Globe, LogOut } from 'lucide-react';
+import { UtensilsCrossed, Menu, X, ArrowUpRight, Sparkles, Shield, User, Globe, LogOut, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 
-export const LandingNavbar: React.FC = () => {
+interface LandingNavbarProps {
+  onOpenAuthModal?: () => void;
+  onOpenScanner?: () => void;
+}
+
+export const LandingNavbar: React.FC<LandingNavbarProps> = ({
+  onOpenAuthModal,
+  onOpenScanner,
+}) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { language, setLanguage } = useLanguage();
@@ -40,7 +48,7 @@ export const LandingNavbar: React.FC = () => {
     { name: language === 'kn' ? 'ಅನುಭವ' : 'Experience', href: '#experience' },
     { name: language === 'kn' ? '3D ಸಿಮ್ಯುಲೇಟರ್' : '3D Simulator', href: '#simulator' },
     { name: language === 'kn' ? 'ವ್ಯವಸ್ಥೆ' : 'Ecosystem', href: '#ecosystem' },
-    { name: language === 'kn' ? 'ಮೆನು ಮಾದರಿ' : 'Menu Sampler', href: '#menu-sampler' },
+    { name: language === 'kn' ? 'ಮೆನು ಮಾದರಿ' : 'Menu Preview', href: '#menu-sampler' },
     { name: language === 'kn' ? 'ಲಾಭ ಕ್ಯಾಲ್ಕುಲೇಟರ್' : 'ROI Calculator', href: '#roi-calculator' },
     { name: language === 'kn' ? 'ಪ್ರಶ್ನೋತ್ತರ' : 'FAQ', href: '#faq' },
   ];
@@ -108,7 +116,7 @@ export const LandingNavbar: React.FC = () => {
                   className="bg-[#2D2621] hover:bg-[#40362F] text-white font-medium h-9 text-xs gap-1.5 shadow-xs"
                 >
                   <Shield className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{getRoleLabel()} Dashboard</span>
+                  <span>{getRoleLabel()} Console</span>
                 </Button>
                 <button
                   onClick={() => signOut()}
@@ -122,7 +130,7 @@ export const LandingNavbar: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate('/auth')}
+                onClick={onOpenAuthModal}
                 className="border-[#D8CAC0] text-[#473E35] hover:bg-[#F2ECE4] hover:text-[#2E2721] font-medium h-9 text-xs gap-1.5"
               >
                 <User className="w-3.5 h-3.5 text-[#887869]" />
@@ -130,21 +138,14 @@ export const LandingNavbar: React.FC = () => {
               </Button>
             )}
 
-            {/* Live Table Demo */}
+            {/* Live Camera Scanner Button */}
             <Button
               size="sm"
-              onClick={() => {
-                const el = document.getElementById('simulator');
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                  navigate('/guest');
-                }
-              }}
+              onClick={onOpenScanner}
               className="bg-[#B85D36] hover:bg-[#9F4D2A] text-white shadow-sm font-medium h-9 px-4 text-xs gap-1.5 transition-all hover:shadow"
             >
-              <span>{language === 'kn' ? 'ಲೈವ್ ಡೆಮೊ ಪ್ರಯತ್ನಿಸಿ' : 'Live Table Demo'}</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              <Camera className="w-3.5 h-3.5" />
+              <span>{language === 'kn' ? 'ಕ್ಯಾಮೆರಾ ಸ್ಕ್ಯಾನ್' : 'Scan Table QR'}</span>
             </Button>
           </div>
 
@@ -198,7 +199,7 @@ export const LandingNavbar: React.FC = () => {
                     variant="outline"
                     onClick={() => {
                       setMobileMenuOpen(false);
-                      navigate('/auth');
+                      if (onOpenAuthModal) onOpenAuthModal();
                     }}
                     className="w-full justify-center border-[#D8CAC0] text-[#473E35] h-11"
                   >
@@ -210,11 +211,12 @@ export const LandingNavbar: React.FC = () => {
                 <Button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    navigate('/guest');
+                    if (onOpenScanner) onOpenScanner();
                   }}
-                  className="w-full justify-center bg-[#B85D36] hover:bg-[#9F4D2A] text-white h-11"
+                  className="w-full justify-center bg-[#B85D36] hover:bg-[#9F4D2A] text-white h-11 gap-2"
                 >
-                  {language === 'kn' ? 'ಗ್ರಾಹಕರ ಟೇಬಲ್ ಆರ್ಡರ್' : 'Guest Table Demo'}
+                  <Camera className="w-4 h-4" />
+                  {language === 'kn' ? 'ಕ್ಯಾಮೆರಾದಿಂದ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ' : 'Scan Table QR with Camera'}
                 </Button>
               </div>
             </div>
