@@ -12,7 +12,8 @@ import {
   Package,
   Phone,
   MessageCircle,
-  Bell
+  Bell,
+  Loader2
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useOrders, Order } from '@/hooks/useOrders';
@@ -33,7 +34,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 
 export default function OrderStatusPage() {
   const { t, language } = useLanguage();
-  const { currentOrder, markEatingFinished, updatePaymentIntent } = useOrders();
+  const { currentOrder, isLoading, markEatingFinished, updatePaymentIntent } = useOrders();
   const { unlockSeatsByOrderId } = useLockedSeats();
   const { addItem } = useCart();
   const navigate = useNavigate();
@@ -123,6 +124,19 @@ export default function OrderStatusPage() {
       return () => clearTimeout(timer);
     }
   }, [currentOrder?.payment_confirmed, hasShownReview]);
+
+  if (isLoading && !currentOrder) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-sm font-medium text-foreground">
+            {language === 'kn' ? 'ಆರ್ಡರ್ ವಿವರಗಳನ್ನು ಪಡೆಯಲಾಗುತ್ತಿದೆ...' : 'Loading your order details...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentOrder) {
     return (

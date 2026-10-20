@@ -230,6 +230,7 @@ export default function ManagerDashboard() {
   const handlePaymentConfirm = async (orderId: string, paymentMode: 'Cash' | 'Online') => {
     try {
       await confirmPayment(orderId, paymentMode);
+      await unlockSeatsByOrderId(orderId);
       toast.success(`Payment confirmed (${paymentMode})!`);
     } catch (error) {
       toast.error('Failed to confirm payment');

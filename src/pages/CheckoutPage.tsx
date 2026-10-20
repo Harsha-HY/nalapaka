@@ -37,12 +37,53 @@ export default function CheckoutPage() {
   const [selectedSeats, setSelectedSeats] = useState<string[]>(['A']);
   const [seatError, setSeatError] = useState<string | null>(null);
   const [autoFilled, setAutoFilled] = useState(false);
+  const [realtimeHeldSeats, setRealtimeHeldSeats] = useState<Record<string, string>>({});
+  const clientId = useMemo(() => Math.random().toString(36).substring(2, 9), []);
 
   const hasActiveOrder = currentOrder && 
     currentOrder.order_stage !== 'completed' &&
     !currentOrder.payment_confirmed;
 
   const lockedSeats = tableNumber.trim() ? getLockedSeatsForTable(tableNumber.trim()) : [];
+
+  const isSeatOccupied = (seat: string): boolean => {
+    return lockedSeats.includes(seat) || (!!realtimeHeldSeats[seat] && realtimeHeldSeats[seat] !== clientId);
+  };
+
+  // Real-time seat synchronization across devices at the same table
+  useEffect(() => {
+    if (!tableNumber.trim()) return;
+    const channelName = `table-seats-sync-${tableNumber.trim()}`;
+    const channel = supabase.channel(channelName, {
+      config: { broadcast: { self: false } },
+    });
+
+    channel
+      .on('broadcast', { event: 'seat_hold' }, ({ payload }) => {
+        if (!payload || !payload.seat) return;
+        setRealtimeHeldSeats((prev) => {
+          const next = { ...prev };
+          if (payload.isHeld) {
+            next[payload.seat] = payload.clientId;
+          } else {
+            delete next[payload.seat];
+          }
+          return next;
+        });
+      })
+      .subscribe();
+
+    return () => {
+      selectedSeats.forEach((s) => {
+        channel.send({
+          type: 'broadcast',
+          event: 'seat_hold',
+          payload: { seat: s, isHeld: false, clientId },
+        });
+      });
+      supabase.removeChannel(channel);
+    };
+  }, [tableNumber, selectedSeats, clientId]);
 
   // Auto-fill from profile
   useEffect(() => {
@@ -76,7 +117,7 @@ export default function CheckoutPage() {
   }
 
   const handleSeatToggle = (seat: string) => {
-    if (lockedSeats.includes(seat)) {
+    if (isSeatOccupied(seat)) {
       setSeatError(
         language === 'kn' 
           ? 'ಈ ಆಸನ ಈಗಾಗಲೇ ಆಕ್ರಮಿಸಲಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೊಂದು ಆಸನವನ್ನು ಆಯ್ಕೆಮಾಡಿ.' 
@@ -85,9 +126,19 @@ export default function CheckoutPage() {
       return;
     }
     setSeatError(null);
+    const willSelect = !selectedSeats.includes(seat);
     setSelectedSeats(prev => 
-      prev.includes(seat) ? prev.filter(s => s !== seat) : [...prev, seat]
+      willSelect ? [...prev, seat] : prev.filter(s => s !== seat)
     );
+
+    // Broadcast immediately so anyone scanning this table sees it as occupied/available in real-time!
+    if (tableNumber.trim()) {
+      supabase.channel(`table-seats-sync-${tableNumber.trim()}`).send({
+        type: 'broadcast',
+        event: 'seat_hold',
+        payload: { seat, isHeld: willSelect, clientId },
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -331,7 +382,7 @@ export default function CheckoutPage() {
                     </Label>
                     <div className="grid grid-cols-2 gap-3">
                       {ALL_SEATS.map((seat) => {
-                        const isLocked = lockedSeats.includes(seat);
+                        const isLocked = isSeatOccupied(seat);
                         const isSelected = selectedSeats.includes(seat);
                         return (
                           <button
@@ -342,25 +393,27 @@ export default function CheckoutPage() {
                             className={cn(
                               'aspect-square rounded-2xl border-2 flex flex-col items-center justify-center transition-all',
                               'text-5xl font-bold',
-                              isLocked && 'opacity-60 bg-muted border-muted text-muted-foreground cursor-not-allowed',
+                              isLocked && 'opacity-60 bg-destructive/10 border-destructive/30 text-destructive cursor-not-allowed',
                               !isLocked && !isSelected && 'border-border bg-card hover:border-primary/60 hover:bg-primary/5',
                               isSelected && 'border-primary bg-primary text-primary-foreground shadow-lg scale-[1.02]'
                             )}
                           >
                             <span className={isLocked ? 'line-through' : ''}>{seat}</span>
                             <span className={cn(
-                              'text-xs font-medium mt-1',
-                              isLocked ? 'text-destructive' : isSelected ? 'text-primary-foreground/90' : 'text-emerald-600'
+                              'text-xs font-semibold mt-1',
+                              isLocked ? 'text-destructive font-bold' : isSelected ? 'text-primary-foreground/90 font-bold' : 'text-emerald-600'
                             )}>
                               {isLocked
-                                ? (language === 'kn' ? 'ಭರ್ತಿ' : 'Filled')
+                                ? (language === 'kn' ? 'ಆಕ್ರಮಿತ' : 'Occupied')
+                                : isSelected
+                                ? (language === 'kn' ? 'ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ' : 'Selected')
                                 : (language === 'kn' ? 'ಲಭ್ಯ' : 'Available')}
                             </span>
                           </button>
                         );
                       })}
                     </div>
-                    {lockedSeats.length === ALL_SEATS.length && (
+                    {ALL_SEATS.every(s => isSeatOccupied(s)) && (
                       <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-center">
                         <p className="text-sm font-medium text-destructive">
                           {language === 'kn'

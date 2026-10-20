@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useHotelContext } from '@/hooks/useHotelContext';
+import { useHotelContext, ensureGuestHotelLoaded } from '@/hooks/useHotelContext';
 
 interface LockedSeat {
   id: string;
@@ -74,7 +74,12 @@ export function useLockedSeats() {
   };
 
   const lockSeats = async (tableNumber: string, seats: string[], orderId: string): Promise<boolean> => {
-    if (!hotelId) {
+    let activeHotelId = hotelId;
+    if (!activeHotelId) {
+      const fallback = await ensureGuestHotelLoaded();
+      activeHotelId = fallback?.id ?? null;
+    }
+    if (!activeHotelId) {
       console.error('No hotel context for locking seats');
       return false;
     }
@@ -83,7 +88,7 @@ export function useLockedSeats() {
         table_number: tableNumber,
         seat,
         order_id: orderId,
-        hotel_id: hotelId,
+        hotel_id: activeHotelId,
       }));
 
       const { error } = await supabase
@@ -94,6 +99,7 @@ export function useLockedSeats() {
         console.error('Error locking seats:', error);
         return false;
       }
+      fetchLockedSeats();
       return true;
     } catch (error) {
       console.error('Error locking seats:', error);

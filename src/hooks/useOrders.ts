@@ -25,12 +25,36 @@ export type Order = OrderRow & {
 
 type OrderInsert = Database['public']['Tables']['orders']['Insert'];
 
+const CURRENT_ORDER_STORAGE_KEY = 'nalapaka_active_order_v1';
+const CURRENT_ORDER_ID_KEY = 'nalapaka_active_order_id_v1';
+
+export function getStoredOrder(): Order | null {
+  try {
+    const raw = localStorage.getItem(CURRENT_ORDER_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function storeCurrentOrder(order: Order | null) {
+  try {
+    if (order) {
+      localStorage.setItem(CURRENT_ORDER_STORAGE_KEY, JSON.stringify(order));
+      localStorage.setItem(CURRENT_ORDER_ID_KEY, order.id);
+    } else {
+      localStorage.removeItem(CURRENT_ORDER_STORAGE_KEY);
+      localStorage.removeItem(CURRENT_ORDER_ID_KEY);
+    }
+  } catch {}
+}
+
 export function useOrders() {
   const { user, isManager, isServer, isKitchen, isSuperAdmin } = useAuth();
   const isStaff = isManager || isServer || isKitchen || isSuperAdmin;
   const { hotelId } = useHotelContext();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(() => (!isStaff ? getStoredOrder() : null));
   const [isLoading, setIsLoading] = useState(false);
 
   const deviceId = getDeviceId();
@@ -63,21 +87,36 @@ export function useOrders() {
       if (error) throw error;
       setOrders((data || []) as Order[]);
 
-      if (!isStaff && data && data.length > 0) {
-        const activeOrder = data.find(
+      if (!isStaff) {
+        let activeOrder = (data || []).find(
           (o) => o.order_stage !== 'completed' && !o.payment_confirmed
         );
-        
-        let fallbackOrder = data[0];
-        if (fallbackOrder && fallbackOrder.payment_confirmed) {
-          const isDismissed = sessionStorage.getItem(`dismissed_completed_order_${fallbackOrder.id}`);
-          if (isDismissed === 'true') {
-            fallbackOrder = null;
+
+        // Fallback: If not in immediate top 20 list, check by persisted order ID
+        const storedId = localStorage.getItem(CURRENT_ORDER_ID_KEY);
+        if (!activeOrder && storedId) {
+          const { data: specificOrder } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('id', storedId)
+            .maybeSingle();
+
+          if (specificOrder) {
+            activeOrder = specificOrder as Order;
           }
         }
         
-        setCurrentOrder((activeOrder as Order) || (fallbackOrder as Order) || null);
-      } else if (!isStaff) {
+        let resolved: Order | null = (activeOrder as Order) || null;
+        if (!resolved && data && data.length > 0) {
+          const fallbackOrder = data[0];
+          if (fallbackOrder && !fallbackOrder.payment_confirmed) {
+            resolved = fallbackOrder as Order;
+          }
+        }
+
+        setCurrentOrder(resolved);
+        storeCurrentOrder(resolved);
+      } else {
         setCurrentOrder(null);
       }
     } catch (error) {
@@ -158,6 +197,7 @@ export function useOrders() {
 
     if (error) throw error;
     setCurrentOrder(data as Order);
+    storeCurrentOrder(data as Order);
     return data;
   };
 
@@ -256,6 +296,9 @@ export function useOrders() {
     const { error } = await supabase.from('orders').update({ order_status: 'Cancelled' }).eq('id', orderId);
     if (error) throw error;
 
+    // Automatically release locked seats upon order cancellation
+    await supabase.from('locked_seats').delete().eq('order_id', orderId);
+
     if (orderData) {
       await supabase
         .from('table_requests' as any)
@@ -300,6 +343,9 @@ export function useOrders() {
       } as any)
       .eq('id', orderId);
     if (error) throw error;
+
+    // Automatically release and reset all locked seats after payment confirmation
+    await supabase.from('locked_seats').delete().eq('order_id', orderId);
 
     if (orderData) {
       await supabase
