@@ -27,3 +27,4 @@ dist-ssr
 .vercel
 consolidated_schema.sql
 
+*.tsbuildinfo

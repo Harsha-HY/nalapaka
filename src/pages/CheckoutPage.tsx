@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, Trash2, Plus, Minus, UtensilsCrossed, Package, AlertTriangle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useCart } from '@/contexts/CartContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTableNumber } from '@/hooks/useTableNumber';

@@ -118,13 +118,12 @@ export default function GuestEntry() {
         if (!active) {
           // Fire non-blocking cleanup of stale table requests
           if (tableNumberParam && tableNumberParam.trim() && hotel) {
-            supabase
+            void supabase
               .from('table_requests' as any)
               .delete()
               .eq('table_number', tableNumberParam.trim())
               .eq('hotel_id', hotel.id)
-              .then(() => {})
-              .catch(() => {});
+              .then(() => {}, () => {});
           }
           navigate('/menu', { replace: true });
           return;

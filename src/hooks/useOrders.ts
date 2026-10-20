@@ -444,7 +444,8 @@ export function useOrders() {
     
     if (!order) return;
     
-    const extras = (order.extra_items || []).map((item: any) => ({ ...item }));
+    const rawExtras = order.extra_items;
+    const extras = (Array.isArray(rawExtras) ? rawExtras : []).map((item: any) => ({ ...item }));
     if (extras[itemIdx]) {
       extras[itemIdx].completed = !extras[itemIdx].completed;
     }
