@@ -78,6 +78,7 @@ export default function DiningHubDashboard() {
   const [qrHotel, setQrHotel] = useState<Hotel | null>(null);
   const [activeTab, setActiveTab] = useState<'hotels' | 'analytics' | 'requests'>('hotels');
   const [onboardingRequests, setOnboardingRequests] = useState<OnboardingRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [form, setForm] = useState({
     hotelName: '',
@@ -153,10 +154,72 @@ export default function DiningHubDashboard() {
     setLoading(false);
   };
 
+  const loadOnboardingRequests = async () => {
+    setLoadingRequests(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('table_number', 'ONBOARDING')
+        .neq('order_status', 'Cancelled')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching onboarding requests from Supabase:', error);
+      }
+
+      const remoteList: OnboardingRequest[] = [];
+      if (data && data.length > 0) {
+        data.forEach((row: any) => {
+          const item = Array.isArray(row.ordered_items) && row.ordered_items[0] ? row.ordered_items[0] : {};
+          remoteList.push({
+            id: row.id,
+            hotelName: item.hotel_name || row.customer_name || 'Restaurant Partner',
+            ownerName: item.owner_name || row.customer_name || 'Applicant',
+            phone: item.phone || row.phone_number || '',
+            email: item.email || '',
+            city: item.city || '',
+            tablesCount: Number(item.tables_count) || 20,
+            notes: item.notes || '',
+            createdAt: row.created_at,
+            status: 'pending',
+          });
+        });
+      }
+
+      // Merge with any local requests (e.g. offline testing)
+      const localRequests = getOnboardingRequests();
+      const remoteIds = new Set(remoteList.map((r) => r.id));
+      const combined = [
+        ...remoteList,
+        ...localRequests.filter((l) => !remoteIds.has(l.id)),
+      ];
+
+      setOnboardingRequests(combined);
+    } catch (err) {
+      console.error('Failed to load requests:', err);
+      setOnboardingRequests(getOnboardingRequests());
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  const handleDeleteRequest = async (id: string) => {
+    if (!confirm('Are you sure you want to dismiss this onboarding request?')) return;
+    try {
+      await supabase.from('orders').delete().eq('id', id);
+      await supabase.from('orders').update({ order_status: 'Cancelled' }).eq('id', id);
+      setOnboardingRequests((prev) => prev.filter((r) => r.id !== id));
+      toast.success('Inquiry dismissed');
+    } catch (e: any) {
+      toast.error('Failed to dismiss inquiry');
+    }
+  };
+
   useEffect(() => {
     if (isSuperAdmin) {
       loadHotels();
-      setOnboardingRequests(getOnboardingRequests());
+      loadOnboardingRequests();
     }
   }, [isSuperAdmin]);
 
@@ -344,7 +407,7 @@ export default function DiningHubDashboard() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex gap-2 border-b pb-3">
+        <div className="flex flex-wrap gap-2 border-b pb-3 items-center">
           <Button
             variant={activeTab === 'hotels' ? 'default' : 'outline'}
             size="sm"
@@ -352,7 +415,7 @@ export default function DiningHubDashboard() {
             className="font-semibold"
           >
             <Building2 className="h-4 w-4 mr-1.5" />
-            Manage Hotels
+            Manage Hotels ({hotels.length})
           </Button>
           <Button
             variant={activeTab === 'analytics' ? 'default' : 'outline'}
@@ -362,6 +425,23 @@ export default function DiningHubDashboard() {
           >
             <BarChart3 className="h-4 w-4 mr-1.5" />
             Platform Analytics
+          </Button>
+          <Button
+            variant={activeTab === 'requests' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => {
+              setActiveTab('requests');
+              loadOnboardingRequests();
+            }}
+            className="font-semibold relative"
+          >
+            <Mail className="h-4 w-4 mr-1.5" />
+            Onboarding Inquiries
+            {onboardingRequests.length > 0 && (
+              <span className="ml-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-600 text-white shadow-xs">
+                {onboardingRequests.length}
+              </span>
+            )}
           </Button>
         </div>
 
@@ -557,13 +637,19 @@ export default function DiningHubDashboard() {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => setOnboardingRequests(getOnboardingRequests())}
+                onClick={loadOnboardingRequests}
+                disabled={loadingRequests}
               >
+                {loadingRequests ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
                 Refresh
               </Button>
             </div>
 
-            {onboardingRequests.length === 0 ? (
+            {loadingRequests && onboardingRequests.length === 0 ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : onboardingRequests.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground text-sm space-y-2">
                   <Mail className="h-10 w-10 mx-auto text-muted-foreground/60" />
@@ -603,6 +689,12 @@ export default function DiningHubDashboard() {
                           <span className="text-muted-foreground">Email:</span>
                           <a href={`mailto:${req.email}`} className="font-semibold text-primary hover:underline">{req.email}</a>
                         </div>
+                        {req.createdAt && (
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-muted/60">
+                            <span>Received:</span>
+                            <span>{new Date(req.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        )}
                       </div>
 
                       {req.notes && (
@@ -614,11 +706,12 @@ export default function DiningHubDashboard() {
                       <div className="pt-2 flex items-center gap-2">
                         <Button
                           size="sm"
-                          className="w-full text-xs font-semibold h-8"
+                          className="flex-1 text-xs font-semibold h-8"
                           onClick={() => {
                             setForm({
                               ...form,
                               hotelName: req.hotelName,
+                              slug: slugify(req.hotelName),
                               adminEmail: req.email,
                               phone: req.phone,
                               address: req.city,
@@ -627,6 +720,15 @@ export default function DiningHubDashboard() {
                           }}
                         >
                           Approve & Create Hotel
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteRequest(req.id)}
+                          title="Dismiss inquiry"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </CardContent>

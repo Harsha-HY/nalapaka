@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureAnonSession } from '@/hooks/useAnonAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface HotelOnboardingModalProps {
@@ -87,23 +88,59 @@ export const HotelOnboardingModal: React.FC<HotelOnboardingModalProps> = ({
       status: 'pending',
     };
 
-    // 1. Save to local storage for Admin Dashboard access
+    // 1. Save to local storage for local immediate backup
     saveOnboardingRequest(newRequest);
 
-    // 2. Also attempt Supabase sync if possible
+    // 2. Persist to Supabase Database (orders table with table_number = 'ONBOARDING')
+    // This allows the Super Admin to see it in real-time from any device or location!
     try {
-      await supabase.from('hotel_onboarding_requests' as any).insert([
-        {
-          hotel_name: newRequest.hotelName,
-          owner_name: newRequest.ownerName,
-          phone: newRequest.phone,
-          email: newRequest.email,
-          city: newRequest.city,
-          tables_count: newRequest.tablesCount,
-          notes: newRequest.notes,
-        },
-      ]);
-    } catch {}
+      await ensureAnonSession();
+      let authData = await supabase.auth.getUser();
+      let userId = authData.data?.user?.id;
+      if (!userId) {
+        const sessionRes = await supabase.auth.getSession();
+        userId = sessionRes.data.session?.user?.id;
+      }
+      if (!userId) {
+        const anonRes = await supabase.auth.signInAnonymously();
+        userId = anonRes.data.user?.id;
+      }
+
+      // Get active hotel ID to attach as foreign key
+      const { data: hotels } = await supabase.from('hotels').select('id').limit(1);
+      const hotelId = hotels?.[0]?.id || '32bbe6e4-029d-4450-b587-4295c9289a21';
+
+      if (userId && hotelId) {
+        const { error: insertErr } = await supabase.from('orders').insert({
+          user_id: userId,
+          hotel_id: hotelId,
+          customer_name: newRequest.ownerName,
+          phone_number: newRequest.phone,
+          table_number: 'ONBOARDING',
+          ordered_items: [
+            {
+              type: 'hotel_onboarding_request',
+              hotel_name: newRequest.hotelName,
+              owner_name: newRequest.ownerName,
+              email: newRequest.email,
+              phone: newRequest.phone,
+              city: newRequest.city,
+              tables_count: newRequest.tablesCount,
+              notes: newRequest.notes,
+              timestamp: newRequest.createdAt,
+            },
+          ],
+          total_amount: 0,
+          order_status: 'Pending',
+          order_stage: 'cart',
+        });
+        if (insertErr) {
+          console.error('Supabase onboarding order insert error:', insertErr);
+        }
+      }
+    } catch (err) {
+      console.error('Error syncing onboarding request to Supabase:', err);
+    }
 
     setSubmitting(false);
     setSubmitted(true);
