@@ -4,7 +4,7 @@ import { Search, History, UtensilsCrossed } from 'lucide-react';
 import { useMenuItems, MenuItem } from '@/hooks/useMenuItems';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useOrders } from '@/hooks/useOrders';
+import { useOrders, getStoredOrder } from '@/hooks/useOrders';
 import { useSessionResume } from '@/hooks/useSessionResume';
 import { useHotelContext, ensureGuestHotelLoaded } from '@/hooks/useHotelContext';
 import { ensureAnonSession } from '@/hooks/useAnonAuth';
@@ -91,9 +91,11 @@ export default function MenuPage() {
   }, [filteredItems]);
 
   // Check if customer has an active order
-  const hasActiveOrder = currentOrder && 
-    (currentOrder.order_status === 'Pending' || currentOrder.order_status === 'Confirmed') &&
-    !(currentOrder as any).payment_confirmed;
+  const storedOrder = getStoredOrder();
+  const effectiveOrder = currentOrder || storedOrder;
+  const hasActiveOrder = !!(effectiveOrder && 
+    (effectiveOrder.order_status === 'Pending' || effectiveOrder.order_status === 'Confirmed') &&
+    !(effectiveOrder as any).payment_confirmed);
 
   // Manager should go directly to dashboard
   useEffect(() => {

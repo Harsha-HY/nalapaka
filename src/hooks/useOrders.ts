@@ -88,13 +88,13 @@ export function useOrders() {
       setOrders((data || []) as Order[]);
 
       if (!isStaff) {
-        let activeOrder = (data || []).find(
-          (o) => o.order_stage !== 'completed' && !o.payment_confirmed
-        );
+        const storedOrder = getStoredOrder();
+        const storedId = localStorage.getItem(CURRENT_ORDER_ID_KEY) || storedOrder?.id;
 
-        // Fallback: If not in immediate top 20 list, check by persisted order ID
-        const storedId = localStorage.getItem(CURRENT_ORDER_ID_KEY);
-        if (!activeOrder && storedId) {
+        let activeOrder: Order | null = null;
+
+        // 1. If we have a stored ID for this device, look it up specifically first
+        if (storedId) {
           const { data: specificOrder } = await supabase
             .from('orders')
             .select('*')
@@ -102,20 +102,56 @@ export function useOrders() {
             .maybeSingle();
 
           if (specificOrder) {
-            activeOrder = specificOrder as Order;
-          }
-        }
-        
-        let resolved: Order | null = (activeOrder as Order) || null;
-        if (!resolved && data && data.length > 0) {
-          const fallbackOrder = data[0];
-          if (fallbackOrder && !fallbackOrder.payment_confirmed) {
-            resolved = fallbackOrder as Order;
+            const isCompleted = (specificOrder as any).order_stage === 'completed' || specificOrder.payment_confirmed || specificOrder.order_status === 'Cancelled';
+            if (!isCompleted) {
+              activeOrder = specificOrder as Order;
+            } else {
+              // It was completed/cancelled on the server
+              storeCurrentOrder(null);
+            }
           }
         }
 
-        setCurrentOrder(resolved);
-        storeCurrentOrder(resolved);
+        // 2. If not found via specific ID, search the recent list
+        if (!activeOrder && data && data.length > 0) {
+          activeOrder = (data.find(
+            (o) => o.order_status !== 'Cancelled' && o.order_stage !== 'completed' && !o.payment_confirmed
+          ) as Order) || null;
+        }
+
+        // 3. If still not found via network list, query by device_id
+        if (!activeOrder && deviceId) {
+          const { data: deviceOrder } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('device_id', deviceId)
+            .neq('order_status', 'Cancelled')
+            .neq('order_stage', 'completed')
+            .eq('payment_confirmed', false)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (deviceOrder) {
+            activeOrder = deviceOrder as Order;
+          }
+        }
+
+        // 4. Fallback: If network query returned nothing (e.g. temporary offline, timing, or RLS),
+        // but we locally have a valid active storedOrder that hasn't completed, KEEP IT!
+        if (!activeOrder && storedOrder) {
+          const isStoredCompleted = storedOrder.order_stage === 'completed' || storedOrder.payment_confirmed || storedOrder.order_status === 'Cancelled';
+          if (!isStoredCompleted) {
+            activeOrder = storedOrder;
+          }
+        }
+
+        if (activeOrder) {
+          setCurrentOrder(activeOrder);
+          storeCurrentOrder(activeOrder);
+        } else {
+          setCurrentOrder(null);
+        }
       } else {
         setCurrentOrder(null);
       }

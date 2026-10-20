@@ -16,7 +16,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useOrders, Order } from '@/hooks/useOrders';
+import { useOrders, Order, getStoredOrder } from '@/hooks/useOrders';
 import { useLockedSeats } from '@/hooks/useLockedSeats';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,7 +34,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 
 export default function OrderStatusPage() {
   const { t, language } = useLanguage();
-  const { currentOrder, isLoading, markEatingFinished, updatePaymentIntent } = useOrders();
+  const { currentOrder: fetchedOrder, isLoading, markEatingFinished, updatePaymentIntent } = useOrders();
+  const storedOrder = getStoredOrder();
+  const currentOrder = fetchedOrder || storedOrder;
   const { unlockSeatsByOrderId } = useLockedSeats();
   const { addItem } = useCart();
   const navigate = useNavigate();
